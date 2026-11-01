@@ -25,7 +25,8 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 **Phone calendar and reminders**
 * **Import from phone calendar** reads the appointments already in your Google calendar (last 12 months and next 12, repeating ones included) and adds them, with the clinic and service you pick. It never imports the same one twice.
 * **Add my sessions to the calendar automatically**: every session you book, move or cancel in PhysioDesk is updated in your Google calendar, so it also shows in Gmail and on your computer.
-* **Client reminders**: 1 hour before each session (or 30 min, 2 h, 3 h, or the evening before), the phone shows a notification. Tap it and WhatsApp opens with the reminder typed; tap send. WhatsApp doesn't let apps send messages by themselves, so this last tap is needed.
+* **Automatic SMS reminders**: 1 hour before each session (or 30 min, 2 h, 3 h, or the evening before), the phone sends the client an SMS by itself, from your own number, even when the app is closed. You get a "Reminder SMS sent" notification, and the appointment shows when it went out. Normal SMS rates of your line apply. **Settings → Client reminders → Send test SMS** tries it on your own number.
+* Prefer WhatsApp? Choose **Notify me to send it on WhatsApp**: the notification opens WhatsApp with the reminder typed, and you tap send. WhatsApp doesn't let apps send messages by themselves.
 
 **Each appointment**
 * Its status: booked, done, no-show or cancelled.
