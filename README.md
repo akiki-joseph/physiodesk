@@ -28,6 +28,14 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 * **Automatic SMS reminders**: 1 hour before each session (or 30 min, 2 h, 3 h, or the evening before), the phone sends the client an SMS by itself, from your own number, even when the app is closed. You get a "Reminder SMS sent" notification, and the appointment shows when it went out. Normal SMS rates of your line apply. **Settings → Client reminders → Send test SMS** tries it on your own number.
 * Prefer WhatsApp? Choose **Notify me to send it on WhatsApp**: the notification opens WhatsApp with the reminder typed, and you tap send. WhatsApp doesn't let apps send messages by themselves.
 
+**Made for physio work**
+* **Today** opens on a dial of the working day, like a goniometer: every session is an arc, a needle shows the time, and the middle counts down to the next client.
+* **Pain map**: tap where it hurts on a front and back body figure in each client's file (mild, moderate, severe).
+* **Home exercises**: build a program from 40 common exercises (neck, shoulder, back, hip and knee, ankle and foot, elbow and wrist) or your own, with sets and reps, and send it on WhatsApp.
+* **Monthly goal**: set the income you want; a ring shows how far you are and how many more sessions it takes.
+* **Reach out**: birthdays to wish and clients who stopped coming, each with a ready message.
+* **Receipts**: send a receipt on WhatsApp after a paid session.
+
 **Each appointment**
 * Its status: booked, done, no-show or cancelled.
 * Paid or unpaid, and how: cash, card, bank transfer, wallet app or insurance.
