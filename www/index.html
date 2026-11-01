@@ -317,7 +317,7 @@ const EXP_CATS=['Rent','Equipment','Supplies','Transport','Utilities','Marketing
 function defaults(){return{
   v:1,
   settings:{therapist:'',currency:'$',cc:'961',startHour:8,endHour:20,slot:45,weekStart:1,clock:'12',theme:'auto',pinHash:'',autoLock:true,onboarded:false,lastBackup:'',
-    remindBefore:'60',calSync:false,calId:'',calName:'',notifAsked:false,lastPlace:'',
+    remindBefore:'60',remindMode:'sms',smsAsked:false,calSync:false,calId:'',calName:'',notifAsked:false,lastPlace:'',
     reminder:'Hello {name}, just a reminder of your physiotherapy session {day} at {time}. See you soon!'},
   places:[{id:'own',name:'Private (no clinic)',cut:0,fee:0,own:true},{id:'p1',name:'Clinic',cut:30,fee:15}],
   calTrash:[],
@@ -816,7 +816,11 @@ function viewSettings(){
   <div class="grid2">
   <section class="card set-list"><h2 class="h2">Client reminders</h2>
     <label class="fld"><span>Remind me to message the client</span><select id="set-remindBefore" data-change="setting" data-k="remindBefore">${[['0','Off'],['30','30 minutes before'],['60','1 hour before'],['120','2 hours before'],['180','3 hours before'],['eve','The evening before, at 8 pm']].map(([v,l])=>`<option value="${v}" ${String(s.remindBefore)===v?'selected':''}>${l}</option>`).join('')}</select></label>
-    <p class="hint">At that time the phone shows a notification. Tap it and WhatsApp opens with the message ready; tap send. WhatsApp doesn't let apps send messages on their own.${isNative()?'':' (Notifications work in the installed app.)'}</p>
+    <label class="fld"><span>How</span><select id="set-remindMode" data-change="setting" data-k="remindMode"><option value="sms" ${s.remindMode==='sms'?'selected':''}>Send an SMS automatically</option><option value="whatsapp" ${s.remindMode!=='sms'?'selected':''}>Notify me to send it on WhatsApp</option></select></label>
+    ${s.remindMode==='sms'?`<p class="hint">The phone sends the SMS by itself from your number, even when the app is closed, and shows you a "Reminder SMS sent" notification. Normal SMS rates of your line apply.${isNative()?'':' (Works in the installed app.)'}</p>
+      ${isNative()&&!smsGranted?`<div class="banner">${ic('alert')}<div style="flex:1;min-width:0"><b>PhysioDesk isn't allowed to send SMS yet</b><span class="small">Until you allow it, you get the WhatsApp notification instead.</span></div><button class="btn sm" data-act="smsAllow">Allow</button></div>`:''}
+      <div class="r2" style="align-items:end"><label class="fld"><span>Test it on your own number</span><input id="sms-test" type="tel" inputmode="tel" placeholder="e.g. 03 123 456"></label><button class="btn" data-act="smsTest">Send test SMS</button></div>`
+    :`<p class="hint">At that time the phone shows a notification. Tap it and WhatsApp opens with the message ready; tap send. WhatsApp doesn't let apps send messages on their own.${isNative()?'':' (Notifications work in the installed app.)'}</p>`}
     <label class="fld"><span>Message</span><textarea id="set-reminder" rows="3" data-change="setting" data-k="reminder">${esc(s.reminder)}</textarea></label>
     <p class="hint">{name}, {day}, {time} and {place} are filled in for each client.</p></section>
   <section class="card set-list"><h2 class="h2">Privacy & look</h2>
@@ -886,7 +890,8 @@ function apptDetail(a){
   ${countsIncome(a)&&a.paid&&a.kind!=='clinic'?`<div><div class="eyebrow" style="margin-bottom:6px">Paid by</div><div class="chips">${METHODS.map(m=>`<button data-act="apptMethod" data-id="${a.id}" data-v="${m}" class="${(a.method||'Cash')===m?'on':''}">${m}</button>`).join('')}</div></div>`:''}
   <dl class="kv"><dt>Where</dt><dd>${esc(pl.name)}${pl.own?'':a.kind==='clinic'?' · clinic’s client':' · your client'}</dd>
     ${a.kind==='clinic'&&!pl.own?`<dt>Clinic pays you</dt><dd>${money(a.price)}</dd>`:`<dt>Client pays</dt><dd>${money(a.price)}</dd>${+a.cut?`<dt>Clinic keeps</dt><dd>−${money(a.cut)}${a.cutPct?` (${a.cutPct}%)`:''}</dd><dt>You get</dt><dd>${money(earn(a))}</dd>`:''}`}
-    ${+a.cost?`<dt>Session cost</dt><dd>−${money(a.cost)}</dd>`:''}<dt>Your profit</dt><dd>${money(profit)}</dd><dt>Length</dt><dd>${a.duration} min</dd>${c?.phone?`<dt>Phone</dt><dd>${esc(c.phone)}</dd>`:''}${a.notes?`<dt>Notes</dt><dd style="font-weight:500;white-space:pre-wrap">${esc(a.notes)}</dd>`:''}</dl>
+    ${+a.cost?`<dt>Session cost</dt><dd>−${money(a.cost)}</dd>`:''}<dt>Your profit</dt><dd>${money(profit)}</dd>
+    ${a.sms?`<dt>Reminder</dt><dd style="color:${a.sms.ok?'var(--ok)':'var(--bad)'}">${a.sms.ok?'SMS sent':'SMS not sent'} ${esc(/^(Today|Yesterday|Tomorrow)$/.test(relDay(ymd(new Date(a.sms.at))))?relDay(ymd(new Date(a.sms.at))).toLowerCase():'on '+relDay(ymd(new Date(a.sms.at))))} at ${fmtT(pad(new Date(a.sms.at).getHours())+':'+pad(new Date(a.sms.at).getMinutes()))}${a.sms.ok?'':' · '+esc(a.sms.error)}</dd>`:''}<dt>Length</dt><dd>${a.duration} min</dd>${c?.phone?`<dt>Phone</dt><dd>${esc(c.phone)}</dd>`:''}${a.notes?`<dt>Notes</dt><dd style="font-weight:500;white-space:pre-wrap">${esc(a.notes)}</dd>`:''}</dl>
   <div class="btn-row">
     ${c?.phone?`<a class="btn soft" href="${waHref(c.phone,reminderText(a))}" data-ext target="_blank" rel="noopener">${ic('chat',16)} Remind</a><a class="btn soft" href="${telHref(c.phone)}" data-ext>${ic('phone',16)} Call</a>`:''}
     <button class="btn soft" data-act="newNote" data-client="${a.clientId}" data-appt="${a.id}">${ic('note',16)} Note</button>
@@ -1106,7 +1111,8 @@ const CHANGE={
   setting:el=>{const k=el.dataset.k;let v=el.value;if('num'in el.dataset)v=+v;if(k==='currency')v=v.trim()||'$';S.settings[k]=v;
     if(k==='startHour'&&S.settings.endHour<=v)S.settings.endHour=Math.min(24,v+1);if(k==='endHour'&&S.settings.startHour>=v)S.settings.startHour=Math.max(0,v-1);
     save();if(k==='theme')applyTheme();if(k!=='reminder'&&k!=='therapist'&&k!=='cc')render();
-    if(k==='remindBefore'&&v!=='0'&&isNative())askNotifPermission().then(ok=>{toast(ok?'Saved. You’ll get a notification '+(v==='eve'?'the evening before':'before each session'):'Allow notifications for PhysioDesk in the phone settings')});else toast('Saved')},
+    if(k==='remindMode'&&v==='sms'&&isNative()){smsAsk().then(ok=>{render();toast(ok?'Saved. Reminders go out by SMS automatically':'SMS not allowed. You get the WhatsApp notification instead')})}
+    else if(k==='remindBefore'&&v!=='0'&&isNative())askNotifPermission().then(ok=>{toast(ok?'Saved. You’ll get a notification '+(v==='eve'?'the evening before':'before each session'):'Allow notifications for PhysioDesk in the phone settings')});else toast('Saved')},
   svcPick:el=>{const s=getSvc(el.value);$('#f-dur').value=s.duration;if(getPlace($('#f-place').value).own||$('#f-kind').value!=='clinic')$('#f-price').value=s.price;CHANGE.conflict();updateSplit()},
   placePick:el=>{const pl=getPlace(el.value);if(pl.own)$('#f-kind').value='private';if(!pl.own&&$('#f-kind').value==='clinic')$('#f-price').value=pl.fee;updateSplit()},
   kindPick:el=>{const pl=getPlace($('#f-place').value);$('#f-price').value=el.value==='clinic'?pl.fee:getSvc($('#f-service').value).price;updateSplit()},
@@ -1371,6 +1377,19 @@ async function importFromPhone(){
 /* ================= phone calendar + reminder notifications (installed app only) ================= */
 const CALP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioCalendar;
 const LNP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications;
+const SMSP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioSms;
+let smsGranted=false;
+const smsKey=a=>{const c=getClient(a.clientId);return a.date+' '+a.time+' '+(c?.phone||'')};
+const smsNumber=p=>'+'+waNum(p);
+async function smsCheck(){const P=SMSP();if(!P)return false;try{smsGranted=!!(await P.check()).granted}catch(e){smsGranted=false}return smsGranted}
+async function smsAsk(){const P=SMSP();if(!P)return false;try{smsGranted=!!(await P.requestAccess()).granted}catch(e){smsGranted=false}return smsGranted}
+async function takeSmsLog(){
+  const P=SMSP();if(!P)return;
+  try{const L=(await P.takeLog()).log||[];if(!L.length)return;
+    for(const e of L){const a=S.appts.find(x=>x.id===e.apptId);if(a)a.sms={at:e.at,ok:!!e.ok,error:e.error||'',key:e.key}}
+    saveQuiet();if(!stack.length)render();
+  }catch(e){}
+}
 let syncT=null,syncing=false,syncAgain=false,calWarned=false;
 function scheduleSync(){if(!isNative())return;clearTimeout(syncT);syncT=setTimeout(runSync,900)}
 async function runSync(){
@@ -1414,7 +1433,18 @@ async function syncReminders(){
   const L=LNP();if(!L)return;
   const pend=(await L.getPending()).notifications||[];
   if(pend.length)await L.cancel({notifications:pend.map(n=>({id:n.id}))});
-  if(String(S.settings.remindBefore||'0')==='0')return;
+  const SP=SMSP();
+  if(String(S.settings.remindBefore||'0')==='0'){if(SP)await SP.cancelAll();return}
+  if(S.settings.remindMode==='sms'&&SP&&await smsCheck()){
+    const now=Date.now();
+    const items=S.appts.filter(a=>a.status==='scheduled'&&!a.demo).map(a=>({a,c:getClient(a.clientId),t:remindAt(a)}))
+      .filter(x=>x.c&&x.c.phone&&x.t>now+20000&&x.t<now+30*864e5&&!(x.a.sms&&x.a.sms.ok&&x.a.sms.key===smsKey(x.a)))
+      .sort((x,y)=>x.t-y.t).slice(0,200)
+      .map(({a,c,t})=>({id:notifId(a.id),at:t,phone:smsNumber(c.phone),text:reminderText(a),apptId:a.id,key:smsKey(a),name:c.name}));
+    await SP.schedule({items});
+    return;
+  }
+  if(SP)await SP.cancelAll();
   if((await L.checkPermissions()).display!=='granted')return;
   const now=Date.now();
   const list=S.appts.filter(a=>a.status==='scheduled'&&!a.demo).map(a=>({a,t:remindAt(a)}))
@@ -1439,6 +1469,16 @@ async function pickCalendar(){
   }catch(e){toast('Could not read the calendars: '+(e&&e.message||e))}
 }
 ACT.pickCal=()=>pickCalendar();
+ACT.smsAllow=()=>smsAsk().then(ok=>{render();scheduleSync();toast(ok?'Reminders will go out by SMS':'Allow SMS for PhysioDesk: phone Settings → Apps → PhysioDesk → Permissions → SMS')});
+ACT.smsTest=async()=>{
+  const P=SMSP();if(!P){toast('This works in the installed app.');return}
+  const num=$('#sms-test').value.trim();if(!num){toast('Type your own number first');return}
+  if(!await smsAsk()){toast('Allow SMS for PhysioDesk first');render();return}
+  const fake={clientId:'',date:addDays(today(),1),time:'10:00',placeId:'own'};
+  const text=reminderText(fake).replace(/^Hello ,/,'Hello,')+' (test)';
+  const r=await P.sendNow({phone:smsNumber(num),text});
+  toast(r.ok?'Test SMS sent. Check your messages':'Not sent: '+(r.error||'unknown reason'));
+};
 ACT.importCal=()=>importFromPhone();
 ACT.calChosen=el=>{const changedCal=String(S.settings.calId)!==el.dataset.id;S.settings.calId=el.dataset.id;S.settings.calName=el.dataset.name+(el.dataset.acc&&el.dataset.acc!==el.dataset.name?' · '+el.dataset.acc:'');S.settings.calSync=true;
   save();closeModal();render();toast(changedCal?'Your sessions will be added to '+el.dataset.name:'Calendar kept')};
@@ -1519,8 +1559,9 @@ if(LNP()){
   });
   if(!S.settings.notifAsked&&String(S.settings.remindBefore)!=='0'){S.settings.notifAsked=true;saveQuiet();setTimeout(askNotifPermission,1500)}
 }
+if(SMSP()){smsCheck().then(ok=>{if(!ok&&S.settings.remindMode==='sms'&&!S.settings.smsAsked&&!S.settings.pinHash){S.settings.smsAsked=true;saveQuiet();setTimeout(()=>smsAsk().then(()=>scheduleSync()),2500)}});takeSmsLog()}
 scheduleSync();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSync()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){takeSmsLog();smsCheck().then(scheduleSync)}});
 setInterval(()=>{if(!stack.length&&route().tab!=='setup'&&!document.hidden&&document.activeElement?.tagName!=='INPUT')render()},60000);
 </script>
 </body>

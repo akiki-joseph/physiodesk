@@ -37,9 +37,11 @@ jobs:
       - name: Calendar connector and permissions
         run: |
           SRC=android/app/src/main
-          cp native/PhysioCalendarPlugin.java native/MainActivity.java $SRC/java/com/joseph/physiodesk/
-          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.READ_CALENDAR" />\n    <uses-permission android:name="android.permission.WRITE_CALENDAR" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n</manifest>#' $SRC/AndroidManifest.xml
-          grep -c "CALENDAR\|EXACT_ALARM" $SRC/AndroidManifest.xml
+          cp native/*.java $SRC/java/com/joseph/physiodesk/
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.READ_CALENDAR" />\n    <uses-permission android:name="android.permission.WRITE_CALENDAR" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.SEND_SMS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n</manifest>#' $SRC/AndroidManifest.xml
+          sed -i 's#</application>#    <receiver android:name=".SmsAlarmReceiver" android:exported="false" />\n        <receiver android:name=".SmsBootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter></receiver>\n    </application>#' $SRC/AndroidManifest.xml
+          grep -c "CALENDAR\|EXACT_ALARM\|SEND_SMS\|SmsAlarmReceiver\|SmsBootReceiver" $SRC/AndroidManifest.xml
+          grep -q 'SmsAlarmReceiver' $SRC/AndroidManifest.xml
           grep -q registerPlugin $SRC/java/com/joseph/physiodesk/MainActivity.java
 
       - name: App icon

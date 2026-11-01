@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(PhysioCalendarPlugin.class);
+        registerPlugin(PhysioSmsPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
