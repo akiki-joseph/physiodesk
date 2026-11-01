@@ -316,8 +316,11 @@ const METHODS=['Cash','Card','Bank transfer','Wallet app','Insurance'];
 const EXP_CATS=['Rent','Equipment','Supplies','Transport','Utilities','Marketing','Salaries','Fees & licences','Other'];
 function defaults(){return{
   v:1,
-  settings:{clinic:'',therapist:'',currency:'$',cc:'961',startHour:8,endHour:20,slot:45,weekStart:1,clock:'12',theme:'auto',pinHash:'',autoLock:true,onboarded:false,lastBackup:'',
-    reminder:'Hello {name}, this is a reminder of your physiotherapy session at {clinic} on {day} at {time}. Please reply to confirm. Thank you!'},
+  settings:{therapist:'',currency:'$',cc:'961',startHour:8,endHour:20,slot:45,weekStart:1,clock:'12',theme:'auto',pinHash:'',autoLock:true,onboarded:false,lastBackup:'',
+    remindBefore:'60',calSync:false,calId:'',calName:'',notifAsked:false,lastPlace:'',
+    reminder:'Hello {name}, just a reminder of your physiotherapy session {day} at {time}. See you soon!'},
+  places:[{id:'own',name:'Private (no clinic)',cut:0,fee:0,own:true},{id:'p1',name:'Clinic',cut:30,fee:15}],
+  calTrash:[],
   services:[
     {id:'s1',name:'Physiotherapy session',price:30,duration:45,color:SVC_COLORS[0]},
     {id:'s2',name:'Initial assessment',price:40,duration:60,color:SVC_COLORS[1]},
@@ -325,14 +328,24 @@ function defaults(){return{
     {id:'s4',name:'Sports massage',price:35,duration:45,color:SVC_COLORS[3]}],
   clients:[],appts:[],expenses:[],notes:[]
 }}
+function migrate(d){
+  const def=defaults();d={...def,...d,settings:{...def.settings,...(d.settings||{})}};
+  if(!Array.isArray(d.places)||!d.places.length)d.places=def.places;
+  if(!d.places.some(p=>p.own))d.places.unshift(def.places[0]);
+  if(!Array.isArray(d.calTrash))d.calTrash=[];
+  for(const a of d.appts){if(!a.placeId)a.placeId='own';if(!a.kind)a.kind='private';if(a.cut==null)a.cut=0}
+  if(String(d.settings.reminder||'').includes('{clinic}'))d.settings.reminder=def.settings.reminder;
+  delete d.settings.clinic;
+  return d;
+}
 function load(){
-  try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw),def=defaults();
-    return {...def,...d,settings:{...def.settings,...(d.settings||{})}}}}catch(e){}
+  try{const raw=localStorage.getItem(KEY);if(raw)return migrate(JSON.parse(raw))}catch(e){}
   return defaults();
 }
 let S=load();
 let saveFailed=false;
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));saveFailed=false}catch(e){if(!saveFailed)toast('This device would not save. Export a backup now.');saveFailed=true}}
+function saveQuiet(){try{localStorage.setItem(KEY,JSON.stringify(S));saveFailed=false}catch(e){if(!saveFailed)toast('This device would not save. Export a backup now.');saveFailed=true}}
+function save(){saveQuiet();scheduleSync()}
 
 /* ================= helpers ================= */
 const $=(s,r=document)=>r.querySelector(s);
@@ -360,6 +373,10 @@ function hueOf(s){let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;
 const initials=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const avatar=(c,cls='')=>`<span class="av ${cls}" style="--hue:${hueOf(c?.name||'')}">${esc(initials(c?.name))}</span>`;
 const getClient=id=>S.clients.find(c=>c.id===id);
+const getPlace=id=>S.places.find(p=>p.id===id)||S.places.find(p=>p.own)||{id:'own',name:'Private (no clinic)',cut:0,fee:0,own:true};
+const earn=a=>(+a.price||0)-(+a.cut||0);
+const r2=n=>Math.round((+n||0)*100)/100;
+const whereLabel=a=>{const p=getPlace(a.placeId);return p.own?'':p.name+(a.kind==='clinic'?' · clinic client':'')};
 const getSvc=id=>S.services.find(s=>s.id===id)||{name:'Session',color:SVC_COLORS[6],price:0,duration:45};
 const byTime=(a,b)=>(a.date+a.time).localeCompare(b.date+b.time);
 const countsIncome=a=>a.status==='done'||(a.status==='noshow'&&a.paid);
@@ -406,12 +423,12 @@ function applyTheme(){const t=S.settings.theme;if(t==='light'||t==='dark')docume
 function stats(from,to){
   const A=S.appts.filter(a=>a.date>=from&&a.date<=to);
   const inc=A.filter(countsIncome);
-  const income=sum(inc,a=>+a.price),costs=sum(inc,a=>+a.cost),collected=sum(inc.filter(a=>a.paid),a=>+a.price);
+  const gross=sum(inc,a=>+a.price),share=sum(inc,a=>+a.cut),income=gross-share,costs=sum(inc,a=>+a.cost),collected=sum(inc.filter(a=>a.paid),earn);
   const expenses=sum(S.expenses.filter(e=>e.date>=from&&e.date<=to),e=>+e.amount);
   const cnt=k=>A.filter(a=>a.status===k).length;
   const sched=A.filter(a=>a.status==='scheduled');
-  return{A,inc,income,costs,collected,unpaid:income-collected,expenses,net:income-costs-expenses,
-    done:cnt('done'),noshow:cnt('noshow'),cancelled:cnt('cancelled'),scheduled:sched.length,expected:sum(sched,a=>+a.price)};
+  return{A,inc,gross,share,income,costs,collected,unpaid:income-collected,expenses,net:income-costs-expenses,
+    done:cnt('done'),noshow:cnt('noshow'),cancelled:cnt('cancelled'),scheduled:sched.length,expected:sum(sched,earn)};
 }
 function periodRange(p){
   const t=today(),y=t.slice(0,4),m=t.slice(0,7);
@@ -427,7 +444,7 @@ function clientStats(id){
   const upcoming=A.filter(a=>a.status==='scheduled'&&(a.date>t||(a.date===t&&toMin(a.time)+(+a.duration)>=n)));
   const past=A.filter(a=>!upcoming.includes(a)).reverse();
   return{A,done:A.filter(a=>a.status==='done').length,noshow:A.filter(a=>a.status==='noshow').length,
-    paid:sum(inc.filter(a=>a.paid),a=>+a.price),owed:sum(inc.filter(a=>!a.paid),a=>+a.price),
+    paid:sum(inc.filter(a=>a.paid),earn),owed:sum(inc.filter(a=>!a.paid),earn),
     upcoming,past,next:upcoming[0],last:A.filter(a=>a.status==='done').pop()};
 }
 function needsReview(){const t=today(),n=nowMin();return S.appts.filter(a=>a.status==='scheduled'&&(a.date<t||(a.date===t&&toMin(a.time)+(+a.duration)<=n))).sort(byTime)}
@@ -472,7 +489,7 @@ function apptRow(a,opts={}){
   return`<div class="row ${a.status}" role="button" tabindex="0" data-act="openAppt" data-id="${a.id}" style="--svc:${s.color}">
     <div class="t">${opts.showDate?esc(fmtD(a.date,{day:'numeric',month:'short'})):fmtTs(a.time)}<small>${opts.showDate?fmtT(a.time):a.duration+' min'}</small></div>
     <span class="stripe"></span>
-    <div class="info"><b>${esc(opts.noName?s.name:(c?.name||'Unknown client'))}</b><span>${opts.noName?a.duration+' min':esc(s.name)} · ${money(a.price)}${a.seriesId?' · '+ic('repeat',12).replace('class="ic"','class="ic" style="display:inline;vertical-align:-1px"'):''}</span></div>
+    <div class="info"><b>${esc(opts.noName?s.name:(c?.name||'Unknown client'))}</b><span>${opts.noName?a.duration+' min':esc(s.name)} · ${money(earn(a))}${whereLabel(a)?' · '+esc(whereLabel(a)):''}${a.seriesId?' · '+ic('repeat',12).replace('class="ic"','class="ic" style="display:inline;vertical-align:-1px"'):''}</span></div>
     <div class="end">${right}</div></div>`;
 }
 
@@ -485,7 +502,7 @@ function viewToday(){
   const left=todays.filter(a=>a.status==='scheduled').length;
   const review=needsReview();
   const P=periodRange(UI.period),ps=stats(P.from,P.to);
-  const owedAll=sum(S.appts.filter(a=>countsIncome(a)&&!a.paid),a=>+a.price);
+  const owedAll=sum(S.appts.filter(a=>countsIncome(a)&&!a.paid),earn);
   const tomorrow=S.appts.filter(a=>a.date===addDays(t,1)&&a.status==='scheduled').length;
   const hasData=S.appts.length>0;
   const lastB=st.lastBackup;
@@ -507,7 +524,7 @@ function viewToday(){
     <div class="seg" role="tablist">${[['week','Week'],['month','Month'],['last','Last month'],['year','Year']].map(([k,l])=>`<button data-act="period" data-v="${k}" class="${UI.period===k?'on':''}">${l}</button>`).join('')}</div></div>
   <div class="kpis">
     <div class="kpi hero"><span class="eyebrow">Net profit</span><span class="v">${money(ps.net)}</span><span class="s">after ${money(ps.costs+ps.expenses)} costs & expenses</span></div>
-    <div class="kpi"><span class="eyebrow">Income</span><span class="v">${money(ps.income)}</span><span class="s">${money(ps.collected)} collected${ps.expected?` · ${money(ps.expected)} booked`:''}</span></div>
+    <div class="kpi"><span class="eyebrow">Your income</span><span class="v">${money(ps.income)}</span><span class="s">${ps.share?`after ${money(ps.share)} to clinics · `:''}${money(ps.collected)} collected${ps.expected?` · ${money(ps.expected)} booked`:''}</span></div>
     <div class="kpi"><span class="eyebrow">Sessions done</span><span class="v">${ps.done}</span><span class="s">${ps.noshow} no-show${ps.noshow===1?'':'s'} · ${ps.scheduled} still booked</span></div>
     <div class="kpi ${owedAll?'warn':''}"><span class="eyebrow">Owed to you</span><span class="v">${money(owedAll)}</span><span class="s">${owedAll?`<a href="#money">See who owes</a>`:'Everyone has paid'}</span></div>
   </div>`;
@@ -515,13 +532,12 @@ function viewToday(){
       <div class="legend"><span><i style="background:var(--chart-a)"></i>Income</span><span><i style="background:var(--chart-b)"></i>Expenses</span><span><i style="background:var(--chart-c);border-radius:50%"></i>Profit</span></div></div>${chart6()}</section>
     ${insights(ps,P)}</div>`;
   if(!hasData)out+=`<section class="card"><div class="empty"><div class="h2">Start with your bookings</div><p>Add your next appointments with +, or bring them over from Google or Outlook calendar.</p>
-    <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="newAppt">${ic('plus',16)} Book a session</button><button class="btn" data-act="importIcs">${ic('down',16)} Import a calendar</button><button class="btn ghost" data-act="loadDemo">Try sample data</button></div></div></section>`;
+    <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="newAppt">${ic('plus',16)} Book a session</button><button class="btn" data-act="importCal">${ic('down',16)} Import from my calendar</button><button class="btn ghost" data-act="loadDemo">Try sample data</button></div></div></section>`;
   return out;
 }
 function insights(ps,P){
-  const by={};ps.inc.forEach(a=>{const k=a.serviceId;by[k]=by[k]||{n:0,v:0};by[k].n++;by[k].v+=+a.price});
-  const rows=Object.entries(by).sort((a,b)=>b[1].v-a[1].v);
-  const max=Math.max(1,...rows.map(r=>r[1].v));
+  const rows=placeRows(ps.inc);
+  const max=Math.max(1,...rows.map(r=>r.v));
   const seen=ps.done+ps.noshow;
   const nsr=seen?Math.round(ps.noshow/seen*100):0;
   const avg=ps.done?ps.income/ps.inc.length:0;
@@ -530,7 +546,7 @@ function insights(ps,P){
   const busy=Object.entries(wd).sort((a,b)=>b[1]-a[1])[0];
   const names=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   return`<section class="card"><div class="card-head"><h2 class="h2">Where it comes from</h2></div>
-    ${rows.length?`<div class="bars">${rows.map(([id,v])=>{const s=getSvc(id);return`<div class="bar-row" style="--svc:${s.color}"><span>${esc(s.name)} <span class="muted">· ${v.n}</span></span><b class="num">${money(v.v)}</b><div class="track"><i style="width:${(v.v/max*100).toFixed(1)}%"></i></div></div>`}).join('')}</div>`:`<p class="muted">Income by service shows here once sessions are marked done.</p>`}
+    ${rows.length?placeBars(rows):`<p class="muted">Your income by clinic shows here once sessions are marked done.</p>`}
     <div class="sep" style="margin:16px 0"></div>
     <div class="facts">
       <div><b>${money(avg)}</b><span>average per session</span></div>
@@ -539,6 +555,15 @@ function insights(ps,P){
       <div><b>${busy?names[busy[0]]:'–'}</b><span>busiest day</span></div>
     </div></section>`;
 }
+function placeRows(inc){
+  const by={};
+  for(const a of inc){const p=getPlace(a.placeId);const k=p.own?'own':p.id+'|'+a.kind;
+    by[k]=by[k]||{n:0,v:0,label:p.own?'Private clients (no clinic)':p.name+(a.kind==='clinic'?' · clinic’s clients':' · your clients'),color:p.own?SVC_COLORS[0]:a.kind==='clinic'?SVC_COLORS[3]:SVC_COLORS[1]};
+    by[k].n++;by[k].v+=earn(a)}
+  return Object.values(by).sort((a,b)=>b.v-a.v);
+}
+function placeBars(rows){const max=Math.max(1,...rows.map(r=>r.v));
+  return`<div class="bars">${rows.map(r=>`<div class="bar-row" style="--svc:${r.color}"><span>${esc(r.label)} <span class="muted">· ${r.n}</span></span><b class="num">${money(r.v)}</b><div class="track"><i style="width:${(r.v/max*100).toFixed(1)}%"></i></div></div>`).join('')}</div>`}
 function chart6(){
   const m0=today().slice(0,7);
   const months=[];for(let i=5;i>=0;i--)months.push(addMonths(m0,-i));
@@ -594,7 +619,7 @@ function weekStrip(d){
 function daySummary(d){
   const A=S.appts.filter(a=>a.date===d&&a.status!=='cancelled');
   if(!A.length)return`<div class="day-sum">Nothing booked. Tap a time below to add a session.</div>`;
-  const inc=sum(A.filter(a=>a.status!=='noshow'||a.paid),a=>+a.price);
+  const inc=sum(A.filter(a=>a.status!=='noshow'||a.paid),earn);
   const mins=sum(A,a=>+a.duration);
   return`<div class="day-sum"><span><b>${A.length}</b> session${A.length>1?'s':''}</span><span><b>${Math.floor(mins/60)}h${mins%60?' '+mins%60+'m':''}</b> of treatment</span><span><b>${money(inc)}</b> for the day</span><span><b>${A.filter(a=>a.status==='done').length}</b> done</span></div>`;
 }
@@ -616,7 +641,7 @@ function dayTimeline(d){
     const top=(it.s-h0*60)*HH/60,ht=Math.max(26,(it.e-it.s)*HH/60-3);
     const w=`calc((100% - 58px) / ${it.n} - 3px)`,l=`calc(58px + (100% - 58px) * ${it.col} / ${it.n})`;
     g+=`<button class="blk ${a.status}" data-act="openAppt" data-id="${a.id}" style="--svc:${s.color};top:${top}px;height:${ht}px;left:${l};width:${w}">
-      ${a.status==='done'?`<span class="ck">${ic('check',14)}</span>`:''}<b>${esc(c?.name||'Client')}</b><span>${fmtTs(a.time)}–${fmtT(fromMin(it.s+(+a.duration)))}${ht>44?'':' · '+esc(s.name)}</span>${ht>44?`<span>${esc(s.name)} · ${money(a.price)}</span>`:''}</button>`;
+      ${a.status==='done'?`<span class="ck">${ic('check',14)}</span>`:''}<b>${esc(c?.name||'Client')}</b><span>${fmtTs(a.time)}–${fmtT(fromMin(it.s+(+a.duration)))}${ht>44?'':' · '+esc(s.name)}</span>${ht>44?`<span>${esc(whereLabel(a)||s.name)} · ${money(earn(a))}</span>`:''}</button>`;
   }
   if(d===today()){const n=nowMin();if(n>=h0*60&&n<=h1*60)g+=`<div class="now" style="top:${(n-h0*60)*HH/60}px"></div>`}
   return g+'</div>';
@@ -643,7 +668,7 @@ function monthGrid(d){
   const cells=Math.ceil(((pd(first).getDay()-S.settings.weekStart+7)%7+dim(ym))/7)*7;
   for(let i=0;i<cells;i++){const x=addDays(start,i);
     const A=S.appts.filter(a=>a.date===x&&a.status!=='cancelled');
-    const v=sum(A.filter(countsIncome),a=>+a.price)||sum(A.filter(a=>a.status==='scheduled'),a=>+a.price);
+    const v=sum(A.filter(countsIncome),earn)||sum(A.filter(a=>a.status==='scheduled'),earn);
     g+=`<button data-act="calPick" data-v="${x}" class="${x.slice(0,7)!==ym?'out':''} ${x===t?'today':''}"><span class="d">${pd(x).getDate()}</span>${A.length?`<span class="c">${A.length}</span><span class="m">${esc(moneyShort(v))}</span>`:''}</button>`}
   const ms=stats(first,ym+'-'+pad(dim(ym)));
   return g+`</div><div class="day-sum" style="margin-top:12px"><span><b>${ms.done}</b> done</span><span><b>${ms.scheduled}</b> booked</span><span><b>${money(ms.income)}</b> earned</span>${ms.expected?`<span><b>${money(ms.expected)}</b> still to come</span>`:''}</div>`;
@@ -730,7 +755,7 @@ function painSpark(p){
 function viewMoney(){
   const m=UI.moneyMonth,from=m+'-01',to=m+'-'+pad(dim(m));
   const st=stats(from,to);
-  const meth={};st.inc.filter(a=>a.paid).forEach(a=>{const k=a.method||'Cash';meth[k]=(meth[k]||0)+(+a.price)});
+  const meth={};st.inc.filter(a=>a.paid).forEach(a=>{const k=a.kind==='clinic'?'Clinic pays you':(a.method||'Cash');meth[k]=(meth[k]||0)+earn(a)});
   const mrows=Object.entries(meth).sort((a,b)=>b[1]-a[1]);const mmax=Math.max(1,...mrows.map(r=>r[1]));
   const unpaid=S.appts.filter(a=>countsIncome(a)&&!a.paid).sort(byTime).reverse();
   const exps=S.expenses.filter(e=>e.date>=from&&e.date<=to).sort((a,b)=>b.date.localeCompare(a.date));
@@ -743,7 +768,9 @@ function viewMoney(){
   <div class="grid2">
   <section class="card"><div class="card-head"><h2 class="h2">Profit & loss</h2><span class="muted small">${st.inc.length} paid-for session${st.inc.length===1?'':'s'}</span></div>
     <div class="ledger">
-      <div class="l"><span>Session income</span><b>${money(st.income)}</b></div>
+      ${st.share?`<div class="l"><span class="muted">Session fees</span><span>${money(st.gross)}</span></div>
+      <div class="l"><span class="muted">− Clinics' share</span><span>${money(st.share)}</span></div>`:''}
+      <div class="l"><span>Your income</span><b>${money(st.income)}</b></div>
       <div class="l"><span class="muted">− Session costs</span><span>${money(st.costs)}</span></div>
       <div class="l"><span class="muted">− Expenses</span><span>${money(st.expenses)}</span></div>
       <div class="l total"><span>Net profit</span><span style="color:${st.net<0?'var(--bad)':'var(--ok)'}">${money(st.net)}</span></div>
@@ -751,16 +778,18 @@ function viewMoney(){
       <div class="l"><span class="muted">Not paid yet</span><span style="${st.unpaid?'color:var(--warn);font-weight:700':''}">${money(st.unpaid)}</span></div>
       ${st.expected?`<div class="l"><span class="muted">Still booked this month</span><span>${money(st.expected)}</span></div>`:''}
     </div></section>
-  <section class="card"><div class="card-head"><h2 class="h2">How you were paid</h2></div>
+  <section class="card"><div class="card-head"><h2 class="h2">Where you earned it</h2></div>
+    ${st.inc.length?placeBars(placeRows(st.inc)):`<p class="muted" style="margin:0">No completed sessions this month.</p>`}
+    <div class="sep" style="margin:16px 0"></div><div class="eyebrow" style="margin-bottom:8px">How you were paid</div>
     ${mrows.length?`<div class="bars">${mrows.map(([k,v])=>`<div class="bar-row"><span>${esc(k)}</span><b class="num">${money(v)}</b><div class="track"><i style="width:${(v/mmax*100).toFixed(1)}%"></i></div></div>`).join('')}</div>`:`<p class="muted" style="margin:0">No payments recorded this month.</p>`}
     ${Object.keys(cats).length?`<div class="sep" style="margin:16px 0"></div><div class="eyebrow" style="margin-bottom:8px">Expenses by type</div><div class="bars">${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar-row" style="--svc:var(--chart-b)"><span>${esc(k)}</span><b class="num">${money(v)}</b><div class="track"><i style="width:${(v/Math.max(...Object.values(cats))*100).toFixed(1)}%"></i></div></div>`).join('')}</div>`:''}
   </section></div>
-  <section class="card"><div class="card-head"><div><h2 class="h2">Owed to you</h2><div class="muted small">All months · ${money(sum(unpaid,a=>+a.price))} in total</div></div></div>
+  <section class="card"><div class="card-head"><div><h2 class="h2">Owed to you</h2><div class="muted small">All months · ${money(sum(unpaid,earn))} in total</div></div></div>
     ${unpaid.length?`<div class="list">${unpaid.slice(0,40).map(a=>apptRow(a,{showDate:true,right:`<button class="btn sm ok" data-act="quickPaid" data-id="${a.id}">${ic('check',14)} Paid</button>`})).join('')}</div>`:`<p class="muted" style="margin:0">Nobody owes you anything.</p>`}</section>
   <section class="card"><div class="card-head"><h2 class="h2">Expenses</h2><button class="btn sm soft" data-act="newExpense">${ic('plus',14)} Add expense</button></div>
     ${exps.length?`<div class="list">${exps.map(e=>`<button class="row" data-act="editExpense" data-id="${e.id}"><div class="t">${esc(fmtD(e.date,{day:'numeric',month:'short'}))}</div><div class="info"><b>${esc(e.category)}</b><span>${esc(e.note||'')}</span></div><div class="end"><span class="amt neg">−${money(e.amount)}</span></div></button>`).join('')}</div>`:`<p class="muted" style="margin:0">Add rent, equipment and supplies so your profit is real.</p>`}</section>
   <section class="card"><div class="card-head"><h2 class="h2">Sessions this month</h2><span class="muted small">profit per session after its own cost</span></div>
-    ${sessions.length?`<div class="list">${sessions.map(a=>apptRow(a,{showDate:true,right:`<span class="amt">${money((+a.price)-(+a.cost||0))}</span>${payBadge(a)}`})).join('')}</div>`:`<p class="muted" style="margin:0">No completed sessions this month.</p>`}</section>`;
+    ${sessions.length?`<div class="list">${sessions.map(a=>apptRow(a,{showDate:true,right:`<span class="amt">${money(earn(a)-(+a.cost||0))}</span>${payBadge(a)}`})).join('')}</div>`:`<p class="muted" style="margin:0">No completed sessions this month.</p>`}</section>`;
 }
 
 /* ================= SETTINGS ================= */
@@ -770,9 +799,8 @@ function viewSettings(){
   const hours=Array.from({length:24},(_,h)=>h);
   return`<div class="page-head"><div><h1 class="h1">Settings</h1><div class="muted">Changes save straight away</div></div></div>
   <div class="grid2">
-  <section class="card set-list"><h2 class="h2">Your clinic</h2>
-    ${fld('clinic','Clinic name','text','placeholder="e.g. Move Well Physio"')}
-    ${fld('therapist','Your name','text','placeholder="e.g. Dr. Karim"')}
+  <section class="card set-list"><h2 class="h2">You</h2>
+    ${fld('therapist','Your name','text','placeholder="e.g. Karim"')}
     <div class="r2">${fld('currency','Currency','text','maxlength="4"')}${fld('cc','WhatsApp country code','text','inputmode="numeric" maxlength="4"')}</div>
     <p class="hint">Numbers saved like 03 123 456 get this code added for WhatsApp (961 is Lebanon).</p></section>
   <section class="card set-list"><h2 class="h2">Calendar</h2>
@@ -781,22 +809,30 @@ function viewSettings(){
     <div class="r2"><label class="fld"><span>Week starts on</span><select id="set-weekStart" data-change="setting" data-k="weekStart" data-num><option value="1" ${s.weekStart==1?'selected':''}>Monday</option><option value="0" ${s.weekStart==0?'selected':''}>Sunday</option><option value="6" ${s.weekStart==6?'selected':''}>Saturday</option></select></label>
     <label class="fld"><span>Clock</span><select id="set-clock" data-change="setting" data-k="clock"><option value="12" ${s.clock==='12'?'selected':''}>2:30 pm</option><option value="24" ${s.clock==='24'?'selected':''}>14:30</option></select></label></div></section>
   </div>
+  <section class="card"><div class="card-head"><div><h2 class="h2">Clinics you work at</h2><div class="muted small">What each clinic keeps from your own clients, and what it pays you for its clients</div></div><button class="btn sm soft" data-act="newPlace">${ic('plus',14)} Add clinic</button></div>
+    <div>${S.places.map(p=>`<div class="svc-row" style="--svc:${p.own?SVC_COLORS[0]:SVC_COLORS[1]}"><span class="dot"></span><div class="info"><b>${esc(p.name)}</b><div class="muted small">${p.own?'Your own clients, home visits: you keep 100%':`Keeps ${+p.cut}% of your clients · pays you ${money(p.fee)} per clinic client`}</div></div>${p.own?'':`<button class="btn sm ghost icon" data-act="editPlace" data-id="${p.id}" aria-label="Edit ${esc(p.name)}">${ic('edit',16)}</button>`}</div>`).join('')}</div></section>
   <section class="card"><div class="card-head"><div><h2 class="h2">Services & prices</h2><div class="muted small">Picking a service fills in its price and length</div></div><button class="btn sm soft" data-act="newService">${ic('plus',14)} Add</button></div>
     <div>${S.services.map(v=>`<div class="svc-row" style="--svc:${v.color}"><span class="dot"></span><div class="info"><b>${esc(v.name)}</b><div class="muted small">${v.duration} min</div></div><b class="num">${money(v.price)}</b><button class="btn sm ghost icon" data-act="editService" data-id="${v.id}" aria-label="Edit ${esc(v.name)}">${ic('edit',16)}</button></div>`).join('')}</div></section>
   <div class="grid2">
-  <section class="card set-list"><h2 class="h2">WhatsApp reminder</h2>
-    <label class="fld"><span>Message</span><textarea id="set-reminder" rows="4" data-change="setting" data-k="reminder">${esc(s.reminder)}</textarea></label>
-    <p class="hint">{name}, {day}, {time} and {clinic} are filled in for each client. Send it from the appointment with "Remind".</p></section>
+  <section class="card set-list"><h2 class="h2">Client reminders</h2>
+    <label class="fld"><span>Remind me to message the client</span><select id="set-remindBefore" data-change="setting" data-k="remindBefore">${[['0','Off'],['30','30 minutes before'],['60','1 hour before'],['120','2 hours before'],['180','3 hours before'],['eve','The evening before, at 8 pm']].map(([v,l])=>`<option value="${v}" ${String(s.remindBefore)===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    <p class="hint">At that time the phone shows a notification. Tap it and WhatsApp opens with the message ready; tap send. WhatsApp doesn't let apps send messages on their own.${isNative()?'':' (Notifications work in the installed app.)'}</p>
+    <label class="fld"><span>Message</span><textarea id="set-reminder" rows="3" data-change="setting" data-k="reminder">${esc(s.reminder)}</textarea></label>
+    <p class="hint">{name}, {day}, {time} and {place} are filled in for each client.</p></section>
   <section class="card set-list"><h2 class="h2">Privacy & look</h2>
     <div class="svc-row" style="border:0;padding:0"><span class="info"><b>PIN lock</b><div class="muted small">${s.pinHash?'On: the app asks for your PIN when opened':'Off: anyone holding the phone can open client files'}</div></span>
       ${s.pinHash?`<button class="btn sm" data-act="removePin">Turn off</button>`:`<button class="btn sm primary" data-act="setPin">${ic('lock',14)} Set PIN</button>`}</div>
     <label class="fld"><span>Theme</span><select id="set-theme" data-change="setting" data-k="theme"><option value="auto" ${s.theme==='auto'?'selected':''}>Same as phone</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option></select></label></section>
   </div>
-  <section class="card set-list"><div><h2 class="h2">Backup & import</h2><div class="muted small">${s.lastBackup?'Last backup '+esc(fmtD(s.lastBackup,{day:'numeric',month:'long',year:'numeric'})):'No backup yet'}. Your data is stored on this phone only.</div></div>
+  <section class="card set-list"><div><h2 class="h2">Phone calendar</h2><div class="muted small">Sessions go into your Google calendar, so they also show in Gmail and on your computer</div></div>
+    <label class="chk"><input type="checkbox" id="set-calSync" data-change="calSync" ${s.calSync?'checked':''}> Add my sessions to the calendar automatically</label>
+    ${s.calSync?`<div class="svc-row" style="border:0;padding:0"><span class="info"><b>${esc(s.calName||'No calendar chosen')}</b><div class="muted small">New, moved and cancelled sessions update there by themselves</div></span><button class="btn sm" data-act="pickCal">Change</button></div>`:''}
+    <div class="btn-row"><button class="btn primary" data-act="importCal">${ic('down',16)} Import from phone calendar</button><button class="btn" data-act="importIcs">From a file (.ics)</button></div>
+    <p class="hint">Import reads the appointments already in your calendar, from the last 12 months and the next 12, and adds them here. Nothing is copied twice.</p></section>
+  <section class="card set-list"><div><h2 class="h2">Backup</h2><div class="muted small">${s.lastBackup?'Last backup '+esc(fmtD(s.lastBackup,{day:'numeric',month:'long',year:'numeric'})):'No backup yet'}. Your data is stored on this phone only.</div></div>
     <div class="btn-row">
       <button class="btn primary" data-act="exportBackup">${ic('up',16)} Back up now</button>
       <button class="btn" data-act="restoreBackup">${ic('down',16)} Restore a backup</button>
-      <button class="btn" data-act="importIcs">${ic('cal',16)} Import Google / Outlook calendar</button>
       <button class="btn" data-act="exportCsv">${ic('down',16)} Export spreadsheet</button></div>
     <p class="hint">Back up sends a file you can save to Google Drive, email to yourself or keep in WhatsApp. Restore it on a new phone to get everything back.</p></section>
   <section class="card set-list"><h2 class="h2">Sample data</h2>
@@ -835,7 +871,7 @@ let ASK=[];
 function apptDetail(a){
   const c=getClient(a.clientId),s=getSvc(a.serviceId);
   const end=fromMin(toMin(a.time)+(+a.duration));
-  const profit=(+a.price)-(+a.cost||0);
+  const profit=earn(a)-(+a.cost||0);const pl=getPlace(a.placeId);
   const seriesN=a.seriesId?S.appts.filter(x=>x.seriesId===a.seriesId).sort(byTime):[];
   return`<div class="form">
   <div class="detail-top" style="--svc:${s.color}"><span class="stripe"></span><div style="flex:1;min-width:0">
@@ -846,9 +882,11 @@ function apptDetail(a){
     <button class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
   ${a.status==='scheduled'?`<div class="r2"><button class="btn ok" data-act="apptStatus" data-id="${a.id}" data-v="done" data-paid="1">${ic('check',16)} Done & paid</button><button class="btn soft" data-act="apptStatus" data-id="${a.id}" data-v="done">Done, pay later</button></div>
    <div class="r2"><button class="btn bad" data-act="apptStatus" data-id="${a.id}" data-v="noshow">No-show</button><button class="btn" data-act="apptStatus" data-id="${a.id}" data-v="cancelled">Cancelled</button></div>`
-   :`<div class="btn-row"><button class="btn sm" data-act="apptStatus" data-id="${a.id}" data-v="scheduled">Back to booked</button>${countsIncome(a)?`<button class="btn sm ${a.paid?'':'ok'}" data-act="apptPaid" data-id="${a.id}">${a.paid?'Mark as unpaid':ic('check',14)+' Mark as paid'}</button>`:a.status==='noshow'?`<button class="btn sm" data-act="apptPaid" data-id="${a.id}">Charged a no-show fee</button>`:''}</div>`}
-  ${countsIncome(a)&&a.paid?`<div><div class="eyebrow" style="margin-bottom:6px">Paid by</div><div class="chips">${METHODS.map(m=>`<button data-act="apptMethod" data-id="${a.id}" data-v="${m}" class="${(a.method||'Cash')===m?'on':''}">${m}</button>`).join('')}</div></div>`:''}
-  <dl class="kv"><dt>Price</dt><dd>${money(a.price)}</dd>${+a.cost?`<dt>Session cost</dt><dd>${money(a.cost)}</dd>`:''}<dt>Profit</dt><dd>${money(profit)}</dd><dt>Length</dt><dd>${a.duration} min</dd>${c?.phone?`<dt>Phone</dt><dd>${esc(c.phone)}</dd>`:''}${a.notes?`<dt>Notes</dt><dd style="font-weight:500;white-space:pre-wrap">${esc(a.notes)}</dd>`:''}</dl>
+   :`<div class="btn-row"><button class="btn sm" data-act="apptStatus" data-id="${a.id}" data-v="scheduled">Back to booked</button>${countsIncome(a)?`<button class="btn sm ${a.paid?'':'ok'}" data-act="apptPaid" data-id="${a.id}">${a.paid?'Mark as unpaid':ic('check',14)+(a.kind==='clinic'?' Clinic paid me':' Mark as paid')}</button>`:a.status==='noshow'?`<button class="btn sm" data-act="apptPaid" data-id="${a.id}">Charged a no-show fee</button>`:''}</div>`}
+  ${countsIncome(a)&&a.paid&&a.kind!=='clinic'?`<div><div class="eyebrow" style="margin-bottom:6px">Paid by</div><div class="chips">${METHODS.map(m=>`<button data-act="apptMethod" data-id="${a.id}" data-v="${m}" class="${(a.method||'Cash')===m?'on':''}">${m}</button>`).join('')}</div></div>`:''}
+  <dl class="kv"><dt>Where</dt><dd>${esc(pl.name)}${pl.own?'':a.kind==='clinic'?' · clinic’s client':' · your client'}</dd>
+    ${a.kind==='clinic'&&!pl.own?`<dt>Clinic pays you</dt><dd>${money(a.price)}</dd>`:`<dt>Client pays</dt><dd>${money(a.price)}</dd>${+a.cut?`<dt>Clinic keeps</dt><dd>−${money(a.cut)}${a.cutPct?` (${a.cutPct}%)`:''}</dd><dt>You get</dt><dd>${money(earn(a))}</dd>`:''}`}
+    ${+a.cost?`<dt>Session cost</dt><dd>−${money(a.cost)}</dd>`:''}<dt>Your profit</dt><dd>${money(profit)}</dd><dt>Length</dt><dd>${a.duration} min</dd>${c?.phone?`<dt>Phone</dt><dd>${esc(c.phone)}</dd>`:''}${a.notes?`<dt>Notes</dt><dd style="font-weight:500;white-space:pre-wrap">${esc(a.notes)}</dd>`:''}</dl>
   <div class="btn-row">
     ${c?.phone?`<a class="btn soft" href="${waHref(c.phone,reminderText(a))}" data-ext target="_blank" rel="noopener">${ic('chat',16)} Remind</a><a class="btn soft" href="${telHref(c.phone)}" data-ext>${ic('phone',16)} Call</a>`:''}
     <button class="btn soft" data-act="newNote" data-client="${a.clientId}" data-appt="${a.id}">${ic('note',16)} Note</button>
@@ -857,7 +895,10 @@ function apptDetail(a){
     <button class="btn bad icon" data-act="apptDelete" data-id="${a.id}" aria-label="Delete">${ic('trash',16)}</button></div>
   </div>`;
 }
-function reminderText(a){const c=getClient(a.clientId);return(S.settings.reminder||'').replaceAll('{name}',(c?.name||'').split(' ')[0]).replaceAll('{clinic}',S.settings.clinic||'the clinic').replaceAll('{day}',relDay(a.date)==='Today'||relDay(a.date)==='Tomorrow'?relDay(a.date).toLowerCase()+' ('+fmtD(a.date,{weekday:'long',day:'numeric',month:'long'})+')':fmtD(a.date,{weekday:'long',day:'numeric',month:'long'})).replaceAll('{time}',fmtT(a.time))}
+function reminderText(a){const c=getClient(a.clientId),p=getPlace(a.placeId),rd=relDay(a.date);
+  const day=rd==='Today'||rd==='Tomorrow'?rd.toLowerCase():'on '+fmtD(a.date,{weekday:'long',day:'numeric',month:'long'});
+  return(S.settings.reminder||'').replaceAll('{name}',(c?.name||'').split(' ')[0]).replaceAll('{place}',p.own?'':p.name).replaceAll('{clinic}',p.own?'':p.name)
+    .replaceAll('{day}',day).replaceAll('{time}',fmtT(a.time)).replace(/ at \.|\s+\./g,'.').replace(/ {2,}/g,' ')}
 function waNum(p){let d=String(p||'').replace(/[^\d+]/g,'');const cc=String(S.settings.cc||'').replace(/\D/g,'');
   if(d.startsWith('+'))return d.slice(1);if(d.startsWith('00'))return d.slice(2);if(d.startsWith('0'))return cc+d.slice(1);if(cc&&d.length<=8)return cc+d;return d}
 const waHref=(p,t)=>`https://wa.me/${waNum(p)}${t?'?text='+encodeURIComponent(t):''}`;
@@ -874,12 +915,14 @@ function apptForm(a,isNew){
     <input type="hidden" name="clientId" id="f-clientId" value="${a.clientId||''}"><div class="ac-list" id="ac-list" hidden></div></div></div>
   <label class="fld" id="f-phone-wrap" ${c||!isNew?'hidden':''}><span>Phone <i>(new client)</i></span><input id="f-phone" name="phone" type="tel" inputmode="tel" placeholder="e.g. 03 123 456"></label>
   <label class="fld"><span>Service</span><select id="f-service" name="serviceId" data-change="svcPick">${S.services.map(s=>`<option value="${s.id}" ${s.id===a.serviceId?'selected':''}>${esc(s.name)} · ${money(s.price)}</option>`).join('')}</select></label>
+  <div class="r2"><label class="fld"><span>Where</span><select id="f-place" name="placeId" data-change="placePick">${S.places.map(p=>`<option value="${p.id}" ${p.id===a.placeId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <label class="fld" id="f-kind-wrap" ${getPlace(a.placeId).own?'hidden':''}><span>Whose client</span><select id="f-kind" name="kind" data-change="kindPick"><option value="private" ${a.kind!=='clinic'?'selected':''}>Mine (clinic takes %)</option><option value="clinic" ${a.kind==='clinic'?'selected':''}>Clinic’s (fixed fee)</option></select></label></div>
   <div class="r2"><label class="fld"><span>Date</span><input id="f-date" type="date" name="date" required value="${a.date}" data-change="conflict"></label>
     <label class="fld"><span>Time</span><input id="f-time" type="time" name="time" step="300" required value="${a.time}" data-change="conflict"></label></div>
   <div class="r3"><label class="fld"><span>Minutes</span><input id="f-dur" type="number" name="duration" min="5" max="600" step="5" inputmode="numeric" value="${a.duration}" data-change="conflict"></label>
-    <label class="fld"><span>Price</span><input id="f-price" type="number" name="price" min="0" step="any" inputmode="decimal" value="${a.price}"></label>
-    <label class="fld"><span>Cost <i>opt.</i></span><input id="f-cost" type="number" name="cost" min="0" step="any" inputmode="decimal" value="${+a.cost||''}" placeholder="0"></label></div>
-  <p class="hint">Cost is what this session costs you: transport, tape, consumables. Profit = price − cost.</p>
+    <label class="fld"><span id="f-price-lbl">Price</span><input id="f-price" type="number" name="price" min="0" step="any" inputmode="decimal" value="${a.price}" data-input="split"></label>
+    <label class="fld"><span>Cost <i>opt.</i></span><input id="f-cost" type="number" name="cost" min="0" step="any" inputmode="decimal" value="${+a.cost||''}" placeholder="0" data-input="split"></label></div>
+  <p class="hint" id="f-split"></p>
   ${!isNew?`<label class="fld"><span>Status</span><select id="f-status" name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${a.status===k?'selected':''}>${v[0]}</option>`).join('')}</select></label>`:''}
   <div class="r2" style="align-items:center"><label class="chk"><input type="checkbox" id="f-paid" name="paid" ${a.paid?'checked':''}> Already paid</label>
     <label class="fld"><select id="f-method" name="method" aria-label="Payment method">${METHODS.map(m=>`<option ${(a.method||'Cash')===m?'selected':''}>${m}</option>`).join('')}</select></label></div>
@@ -891,7 +934,18 @@ function apptForm(a,isNew){
   </form>`;
 }
 function conflictMsg(conf){return conf.length?'Overlaps with '+conf.map(x=>esc(getClient(x.clientId)?.name||'a session')+' at '+fmtT(x.time)).join(', ')+'. You can still save it.':''}
+function updateSplit(){
+  const pl=getPlace($('#f-place')?.value),kind=pl.own?'private':$('#f-kind').value,price=+$('#f-price').value||0,cost=+$('#f-cost').value||0;
+  $('#f-kind-wrap').hidden=!!pl.own;
+  $('#f-price-lbl').textContent=kind==='clinic'?'You get':'Client pays';
+  let t;
+  if(kind==='clinic')t=`${esc(pl.name)} pays you a fixed ${money(price)} for its clients.`;
+  else if(+pl.cut)t=`${esc(pl.name)} keeps ${pl.cut}% (${money(r2(price*pl.cut/100))}), you get <b>${money(r2(price-price*pl.cut/100))}</b>.`;
+  else t=`You keep the full ${money(price)}.`;
+  $('#f-split').innerHTML=t+(cost?` After the ${money(cost)} cost: <b>${money(r2((kind==='clinic'?price:price-price*(+pl.cut||0)/100)-cost))}</b> profit.`:' Cost is anything this session costs you, like transport or tape.');
+}
 function mountApptForm(el){
+  updateSplit();
   const inp=el.querySelector('#f-client');
   if(!inp.value)setTimeout(()=>inp.focus(),250);
 }
@@ -911,7 +965,12 @@ function newApptDefaults(o={}){
     let m=date===today()?Math.ceil(nowMin()/15)*15:S.settings.startHour*60+60;
     if(sameDay.length){const lastEnd=Math.max(...sameDay.map(a=>toMin(a.time)+(+a.duration)));if(lastEnd>m&&lastEnd<24*60)m=lastEnd}
     if(m>=23*60)m=S.settings.startHour*60;time=fromMin(m)}
-  return{id:'',clientId:o.clientId||'',serviceId:o.serviceId||svc.id,date,time,duration:o.duration||svc.duration,price:o.price??svc.price,cost:0,status:'scheduled',paid:false,method:'Cash',notes:''};
+  let placeId=o.placeId,kind=o.kind;
+  if(!placeId&&o.clientId){const last=S.appts.filter(a=>a.clientId===o.clientId).sort(byTime).pop();if(last){placeId=last.placeId;kind=kind||last.kind}}
+  if(!placeId||!S.places.some(p=>p.id===placeId))placeId=S.places.some(p=>p.id===S.settings.lastPlace)?S.settings.lastPlace:'own';
+  const pl=getPlace(placeId);kind=pl.own?'private':(kind||'private');
+  const price=o.price??(kind==='clinic'?pl.fee:svc.price);
+  return{id:'',clientId:o.clientId||'',serviceId:o.serviceId||svc.id,placeId,kind,date,time,duration:o.duration||svc.duration,price,cost:0,status:'scheduled',paid:false,method:'Cash',notes:''};
 }
 
 /* ---------- client form ---------- */
@@ -947,6 +1006,15 @@ function expenseForm(e){
   ${e.id?'':`<label class="fld"><span>Repeat</span><select id="e-rep" name="rep"><option value="1">Just this once</option>${[3,6,12].map(n=>`<option value="${n}">Every month for ${n} months</option>`).join('')}</select></label>`}
   <div class="sheet-actions">${e.id?`<button type="button" class="btn bad icon" data-act="deleteExpense" data-id="${e.id}" aria-label="Delete expense">${ic('trash',16)}</button><span style="flex:1"></span>`:''}<button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`;
 }
+function placeForm(p){
+  return`<form class="form" data-form="place" data-id="${p.id||''}">
+  <div class="card-head" style="margin:0"><h2 class="h2">${p.id?'Edit clinic':'New clinic'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <label class="fld"><span>Clinic name</span><input id="pl-name" name="name" value="${esc(p.name||'')}" required placeholder="e.g. Hamra Physio Center"></label>
+  <div class="r2"><label class="fld"><span>% it keeps from your clients</span><input id="pl-cut" type="number" name="cut" min="0" max="100" step="any" inputmode="decimal" value="${p.cut??30}" required></label>
+  <label class="fld"><span>It pays you per clinic client</span><input id="pl-fee" type="number" name="fee" min="0" step="any" inputmode="decimal" value="${p.fee??15}" required></label></div>
+  <p class="hint">Your clients: the client pays the session price and the clinic keeps this %. Clinic’s clients: you get the fixed amount. Changing these numbers only affects new bookings.</p>
+  <div class="sheet-actions">${p.id?`<button type="button" class="btn bad icon" data-act="deletePlace" data-id="${p.id}" aria-label="Delete clinic">${ic('trash',16)}</button><span style="flex:1"></span>`:''}<button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`;
+}
 function serviceForm(v){
   return`<form class="form" data-form="service" data-id="${v.id||''}">
   <div class="card-head" style="margin:0"><h2 class="h2">${v.id?'Edit service':'New service'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
@@ -974,11 +1042,11 @@ const ACT={
     toast({done:a.paid?'Marked done and paid':'Marked done',noshow:'Marked as no-show',cancelled:'Marked as cancelled',scheduled:'Back to booked'}[a.status])},
   apptPaid:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.paid=!a.paid;a.method=a.method||'Cash';save();render();replaceModal(apptDetail(a))},
   apptMethod:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.method=el.dataset.v;save();replaceModal(apptDetail(a))},
-  apptEdit:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);replaceModal(apptForm(a,false))},
-  rebook:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);const n=newApptDefaults({clientId:a.clientId,serviceId:a.serviceId,date:addDays(a.date<today()?today():a.date,7),time:a.time,duration:a.duration,price:a.price});replaceModal(apptForm(n,true))},
+  apptEdit:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);replaceModal(apptForm(a,false),updateSplit)},
+  rebook:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);const n=newApptDefaults({clientId:a.clientId,serviceId:a.serviceId,placeId:a.placeId,kind:a.kind,date:addDays(a.date<today()?today():a.date,7),time:a.time,duration:a.duration,price:a.price});replaceModal(apptForm(n,true),mountApptForm)},
   apptDelete:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);const nm=esc(getClient(a.clientId)?.name||'');
     const later=a.seriesId?S.appts.filter(x=>x.seriesId===a.seriesId&&x.id!==a.id&&(x.date+x.time)>(a.date+a.time)&&x.status==='scheduled'):[];
-    const del=ids=>{S.appts=S.appts.filter(x=>!ids.includes(x.id));save();toast(ids.length>1?ids.length+' sessions deleted':'Session deleted')};
+    const del=ids=>{trashCal(S.appts.filter(x=>ids.includes(x.id)));S.appts=S.appts.filter(x=>!ids.includes(x.id));save();toast(ids.length>1?ids.length+' sessions deleted':'Session deleted')};
     const btns=[{label:'Delete',cls:'bad',run:()=>del([a.id])}];
     if(later.length)btns.push({label:`Delete this and ${later.length} later`,cls:'bad',run:()=>del([a.id,...later.map(x=>x.id)])});
     ask('Delete this session?',`${nm}, ${esc(fmtD(a.date))} at ${fmtT(a.time)}. To keep a record that it didn't happen, mark it Cancelled instead.`,btns)},
@@ -986,7 +1054,7 @@ const ACT={
   quickNoshow:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.status='noshow';save();render();toast('Marked as no-show')},
   reviewAllDone:()=>{const R=needsReview();ask(`Mark ${R.length} sessions done & paid?`,'Use this when everyone came and paid cash. You can still change single sessions afterwards.',[{label:'Mark all',cls:'ok',run:()=>{R.forEach(a=>{a.status='done';a.paid=true;a.method=a.method||'Cash'});save();toast(R.length+' sessions updated')}}])},
   quickPaid:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.paid=true;a.method=a.method||'Cash';save();render();toast(`${getClient(a.clientId)?.name||'Session'} marked as paid`)},
-  payAllClient:el=>{const id=el.dataset.id;const L=S.appts.filter(a=>a.clientId===id&&countsIncome(a)&&!a.paid);ask(`Mark ${money(sum(L,a=>+a.price))} as paid?`,`${L.length} session${L.length>1?'s':''} for ${esc(getClient(id).name)}.`,[{label:'Mark paid',cls:'ok',run:()=>{L.forEach(a=>{a.paid=true;a.method=a.method||'Cash'});save();toast('Marked as paid')}}])},
+  payAllClient:el=>{const id=el.dataset.id;const L=S.appts.filter(a=>a.clientId===id&&countsIncome(a)&&!a.paid);ask(`Mark ${money(sum(L,earn))} as paid?`,`${L.length} session${L.length>1?'s':''} for ${esc(getClient(id).name)}.`,[{label:'Mark paid',cls:'ok',run:()=>{L.forEach(a=>{a.paid=true;a.method=a.method||'Cash'});save();toast('Marked as paid')}}])},
   calStep:el=>calStep(+el.dataset.v),
   calToday:()=>{UI.calDate=today();UI.scrollCal=true;render()},
   calMode:el=>{UI.calMode=el.dataset.v;UI.scrollCal=true;render()},
@@ -995,10 +1063,11 @@ const ACT={
   newClient:()=>openModal(clientForm({}),el=>setTimeout(()=>el.querySelector('#c-name').focus(),250)),
   editClient:el=>openModal(clientForm(getClient(el.dataset.id))),
   deleteClient:el=>{const c=getClient(el.dataset.id);const n=S.appts.filter(a=>a.clientId===c.id).length;
-    ask(`Delete ${c.name}?`,`This also deletes their ${n} session${n===1?'':'s'} and treatment notes, and removes that income from your totals.`,[{label:'Delete client',cls:'bad',run:()=>{S.clients=S.clients.filter(x=>x.id!==c.id);S.appts=S.appts.filter(a=>a.clientId!==c.id);S.notes=S.notes.filter(x=>x.clientId!==c.id);save();toast('Client deleted');return()=>go('clients')}}])},
+    ask(`Delete ${c.name}?`,`This also deletes their ${n} session${n===1?'':'s'} and treatment notes, and removes that income from your totals.`,[{label:'Delete client',cls:'bad',run:()=>{S.clients=S.clients.filter(x=>x.id!==c.id);trashCal(S.appts.filter(a=>a.clientId===c.id));S.appts=S.appts.filter(a=>a.clientId!==c.id);S.notes=S.notes.filter(x=>x.clientId!==c.id);save();toast('Client deleted');return()=>go('clients')}}])},
   acPick:el=>{const c=getClient(el.dataset.id);$('#f-client').value=c.name;$('#f-clientId').value=c.id;$('#ac-list').hidden=true;$('#f-phone-wrap').hidden=true;
     const last=S.appts.filter(a=>a.clientId===c.id).sort(byTime).pop();
-    if(last&&!$('form[data-form=appt]').dataset.id){$('#f-service').value=last.serviceId;$('#f-dur').value=last.duration;$('#f-price').value=last.price;CHANGE.conflict()}},
+    if(last&&!$('form[data-form=appt]').dataset.id){$('#f-service').value=last.serviceId;$('#f-dur').value=last.duration;$('#f-price').value=last.price;
+      if(S.places.some(p=>p.id===last.placeId)){$('#f-place').value=last.placeId;$('#f-kind').value=last.kind||'private'}CHANGE.conflict()}updateSplit()},
   acNew:()=>{const v=$('#f-client').value.trim().replace(/\b\w/g,x=>x.toUpperCase());$('#f-client').value=v;$('#f-clientId').value='';$('#ac-list').hidden=true;$('#f-phone-wrap').hidden=false;setTimeout(()=>$('#f-phone').focus(),50)},
   newNote:el=>{const n={clientId:el.dataset.client,apptId:el.dataset.appt||'',date:el.dataset.appt?S.appts.find(a=>a.id===el.dataset.appt).date:today(),pain:'',text:''};stack.length?replaceModal(noteForm(n)):openModal(noteForm(n))},
   editNote:el=>openModal(noteForm(S.notes.find(n=>n.id===el.dataset.id))),
@@ -1010,6 +1079,11 @@ const ACT={
   newService:()=>openModal(serviceForm({color:SVC_COLORS[S.services.length%SVC_COLORS.length]})),
   editService:el=>openModal(serviceForm(S.services.find(v=>v.id===el.dataset.id))),
   deleteService:el=>{const v=S.services.find(x=>x.id===el.dataset.id);ask(`Delete ${v.name}?`,'Past sessions keep their price. They show as "Session" on the calendar.',[{label:'Delete',cls:'bad',run:()=>{S.services=S.services.filter(x=>x.id!==v.id);save();toast('Service deleted')}}])},
+  newPlace:()=>openModal(placeForm({})),
+  editPlace:el=>openModal(placeForm(S.places.find(p=>p.id===el.dataset.id))),
+  deletePlace:el=>{const p=S.places.find(x=>x.id===el.dataset.id);const n=S.appts.filter(a=>a.placeId===p.id).length;
+    if(n){ask(`${p.name} has ${n} session${n>1?'s':''}`,'Clinics with sessions can’t be deleted, so your past income stays right. Rename it instead if it changed.',[]);return}
+    ask(`Delete ${p.name}?`,'',[{label:'Delete',cls:'bad',run:()=>{S.places=S.places.filter(x=>x.id!==p.id);save();toast('Clinic deleted')}}])},
   setPin:()=>pinSetup(),
   removePin:()=>ask('Turn off the PIN lock?','Anyone holding the phone could then open client files.',[{label:'Turn off',cls:'bad',run:()=>{S.settings.pinHash='';save();toast('PIN lock is off')}}]),
   exportBackup:()=>exportBackup(),
@@ -1018,19 +1092,24 @@ const ACT={
   exportCsv:()=>exportCsv(),
   loadDemo:()=>{loadDemo();save();render();toast('Sample data loaded')},
   clearDemo:()=>ask('Remove the sample data?','Only the made-up clients, sessions and expenses are removed.',[{label:'Remove',cls:'bad',run:()=>{clearDemo();save();toast('Sample data removed')}}]),
-  eraseAll:()=>ask('Erase everything?','All clients, sessions, notes and expenses on this phone are deleted. Back up first if you might need them.',[{label:'Erase everything',cls:'bad',run:()=>{const keep=S.settings;S=defaults();S.settings={...keep,lastBackup:''};save();toast('Everything erased')}}]),
-  onbStart:el=>{const f=el.closest('.form');S.settings.clinic=f.querySelector('#o-clinic').value.trim();S.settings.therapist=f.querySelector('#o-name').value.trim();S.settings.currency=f.querySelector('#o-cur').value.trim()||'$';S.settings.onboarded=true;if(el.dataset.demo)loadDemo();save();closeModal();render()},
+  eraseAll:()=>ask('Erase everything?','All clients, sessions, notes and expenses on this phone are deleted, and the sessions PhysioDesk added to your calendar are removed from it. Back up first if you might need them.',[{label:'Erase everything',cls:'bad',run:()=>{trashCal(S.appts);const keep=S.settings,places=S.places,trash=S.calTrash;S=defaults();S.settings={...keep,lastBackup:''};S.places=places;S.calTrash=trash;save();toast('Everything erased')}}]),
+  onbStart:el=>{const f=el.closest('.form');const pn=f.querySelector('#o-place').value.trim();let pl=S.places.find(p=>!p.own);if(!pl){pl={id:'p1'};S.places.push(pl)}
+    Object.assign(pl,{name:pn||pl.name||'Clinic',cut:+f.querySelector('#o-cut').value||0,fee:+f.querySelector('#o-fee').value||0});S.settings.therapist=f.querySelector('#o-name').value.trim();S.settings.currency=f.querySelector('#o-cur').value.trim()||'$';S.settings.onboarded=true;if(el.dataset.demo)loadDemo();save();closeModal();render()},
 };
 const INPUT={
   clientSearch:el=>{UI.q=el.value;$('#client-list').innerHTML=clientList()},
   clientAc:el=>{$('#f-clientId').value='';const exact=S.clients.find(c=>c.name.toLowerCase()===el.value.trim().toLowerCase());if(exact)$('#f-clientId').value=exact.id;$('#f-phone-wrap').hidden=!!exact||!el.value.trim()||el.closest('form').dataset.id!=='';acRender(el.value)},
+  split:()=>updateSplit(),
   painOut:el=>{$('#n-pain-out').textContent=el.value+'/10';$('#n-nopain').checked=false},
 };
 const CHANGE={
   setting:el=>{const k=el.dataset.k;let v=el.value;if('num'in el.dataset)v=+v;if(k==='currency')v=v.trim()||'$';S.settings[k]=v;
     if(k==='startHour'&&S.settings.endHour<=v)S.settings.endHour=Math.min(24,v+1);if(k==='endHour'&&S.settings.startHour>=v)S.settings.startHour=Math.max(0,v-1);
-    save();if(k==='theme')applyTheme();if(k!=='reminder'&&k!=='clinic'&&k!=='therapist'&&k!=='cc')render();toast('Saved')},
-  svcPick:el=>{const s=getSvc(el.value);$('#f-dur').value=s.duration;$('#f-price').value=s.price;CHANGE.conflict()},
+    save();if(k==='theme')applyTheme();if(k!=='reminder'&&k!=='therapist'&&k!=='cc')render();
+    if(k==='remindBefore'&&v!=='0'&&isNative())askNotifPermission().then(ok=>{toast(ok?'Saved. You’ll get a notification '+(v==='eve'?'the evening before':'before each session'):'Allow notifications for PhysioDesk in the phone settings')});else toast('Saved')},
+  svcPick:el=>{const s=getSvc(el.value);$('#f-dur').value=s.duration;if(getPlace($('#f-place').value).own||$('#f-kind').value!=='clinic')$('#f-price').value=s.price;CHANGE.conflict();updateSplit()},
+  placePick:el=>{const pl=getPlace(el.value);if(pl.own)$('#f-kind').value='private';if(!pl.own&&$('#f-kind').value==='clinic')$('#f-price').value=pl.fee;updateSplit()},
+  kindPick:el=>{const pl=getPlace($('#f-place').value);$('#f-price').value=el.value==='clinic'?pl.fee:getSvc($('#f-service').value).price;updateSplit()},
   conflict:()=>{const f=$('form[data-form=appt]');if(!f)return;const c=conflictsFor($('#f-date').value,$('#f-time').value,$('#f-dur').value,f.dataset.id);const b=$('#conflict');b.innerHTML=conflictMsg(c);b.hidden=!c.length},
   repeat:el=>{$('#f-count-wrap').hidden=!el.value},
 };
@@ -1053,8 +1132,11 @@ const FORMS={
     let c=getClient(fd.get('clientId'));
     if(!c||c.name.toLowerCase()!==name.toLowerCase()){c=S.clients.find(x=>x.name.toLowerCase()===name.toLowerCase());
       if(!c){c={id:uid(),name,phone:String(fd.get('phone')||'').trim(),createdAt:today()};S.clients.push(c)}}
-    const base={clientId:c.id,serviceId:fd.get('serviceId'),date:fd.get('date'),time:fd.get('time'),duration:Math.max(5,+fd.get('duration')||45),
-      price:+fd.get('price')||0,cost:+fd.get('cost')||0,paid:fd.get('paid')==='on',method:fd.get('method')||'Cash',notes:String(fd.get('notes')||'').trim()};
+    const pl=getPlace(fd.get('placeId')),kind=pl.own?'private':(fd.get('kind')||'private'),price=+fd.get('price')||0;
+    const pct=kind==='private'?(+pl.cut||0):0;
+    const base={clientId:c.id,serviceId:fd.get('serviceId'),placeId:pl.id,kind,date:fd.get('date'),time:fd.get('time'),duration:Math.max(5,+fd.get('duration')||45),
+      price,cut:r2(price*pct/100),cutPct:pct,cost:+fd.get('cost')||0,paid:fd.get('paid')==='on',method:fd.get('method')||'Cash',notes:String(fd.get('notes')||'').trim()};
+    S.settings.lastPlace=pl.id;
     if(!base.date||!base.time){toast('Pick a date and time');return}
     const id=f.dataset.id;
     if(id){const a=S.appts.find(x=>x.id===id);Object.assign(a,base,{status:fd.get('status')||a.status});
@@ -1087,6 +1169,12 @@ const FORMS={
     if(f.dataset.id)Object.assign(S.expenses.find(e=>e.id===f.dataset.id),o);
     else{const n=+fd.get('rep')||1;const day=+o.date.slice(8);for(let i=0;i<n;i++){const ym=addMonths(o.date.slice(0,7),i);S.expenses.push({...o,id:uid(),date:ym+'-'+pad(Math.min(day,dim(ym)))})}}
     save();closeModal();render();toast('Expense saved');
+  },
+  place:(f,fd)=>{
+    const o={name:String(fd.get('name')).trim(),cut:Math.min(100,Math.max(0,+fd.get('cut')||0)),fee:Math.max(0,+fd.get('fee')||0)};
+    if(!o.name){toast('Type the clinic name');return}
+    if(f.dataset.id)Object.assign(S.places.find(x=>x.id===f.dataset.id),o);else S.places.push({id:uid(),...o});
+    save();closeModal();render();toast('Saved');
   },
   service:(f,fd)=>{
     const o={name:String(fd.get('name')).trim(),price:+fd.get('price')||0,duration:+fd.get('duration')||45,color:fd.get('color')||SVC_COLORS[0]};
@@ -1138,10 +1226,11 @@ async function exportBackup(){
 }
 function csvCell(v){v=String(v??'');return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function exportCsv(){
-  const rows=[['Type','Date','Time','Client','Phone','Service / category','Status','Minutes','Price','Session cost','Profit','Paid','Payment method','Notes']];
+  const rows=[['Type','Date','Time','Client','Phone','Service / category','Place','Client of','Status','Minutes','Price','Clinic share','Your income','Session cost','Profit','Paid','Payment method','Notes']];
   S.appts.slice().sort(byTime).forEach(a=>{const c=getClient(a.clientId)||{};const inc=countsIncome(a);
-    rows.push(['Session',a.date,a.time,c.name,c.phone,getSvc(a.serviceId).name,STATUS[a.status][0],a.duration,a.price,a.cost||0,inc?(+a.price)-(+a.cost||0):0,inc?(a.paid?'Yes':'No'):'',a.paid?a.method:'',a.notes])});
-  S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>rows.push(['Expense',e.date,'','','',e.category,'','',-e.amount,'',-e.amount,'','',e.note]));
+    const pl=getPlace(a.placeId);
+    rows.push(['Session',a.date,a.time,c.name,c.phone,getSvc(a.serviceId).name,pl.name,pl.own?'':a.kind==='clinic'?'Clinic':'Me',STATUS[a.status][0],a.duration,a.price,+a.cut||0,earn(a),a.cost||0,inc?earn(a)-(+a.cost||0):0,inc?(a.paid?'Yes':'No'):'',a.paid?(a.kind==='clinic'?'Clinic':a.method):'',a.notes])});
+  S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>rows.push(['Expense',e.date,'','','',e.category,'','','','',-e.amount,'',-e.amount,'',-e.amount,'','',e.note]));
   saveFile(`PhysioDesk-${today()}.csv`,'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv');
 }
 let pickMode='';
@@ -1153,7 +1242,8 @@ function restoreFrom(t){
   let d;try{const j=JSON.parse(t);d=j.data||j}catch(e){toast('That file is not a PhysioDesk backup');return}
   if(!d||!Array.isArray(d.appts)||!Array.isArray(d.clients)){toast('That file is not a PhysioDesk backup');return}
   ask('Restore this backup?',`It holds ${d.clients.length} clients and ${d.appts.length} sessions. It replaces what is on this phone now.`,[{label:'Restore',run:()=>{
-    const pin=S.settings.pinHash,def=defaults();S={...def,...d,settings:{...def.settings,...d.settings,pinHash:pin,onboarded:true}};save();applyTheme();toast('Backup restored')}}]);
+    const keep=S.settings,trash=S.calTrash;S=migrate(d);S.settings={...S.settings,pinHash:keep.pinHash,onboarded:true,calSync:keep.calSync,calId:keep.calId,calName:keep.calName};S.calTrash=trash;
+    for(const a of S.appts){a.calSig='';if(a.calCal!==keep.calId)a.calEventId=''}save();applyTheme();toast('Backup restored')}}]);
 }
 /* --- .ics import (Google Calendar, Outlook, Apple) --- */
 function parseICS(text){
@@ -1213,33 +1303,151 @@ function icsPreview(text){
       const k=(ev.UID?.val||title)+'|'+o.start.getTime();
       if(!ev['RECURRENCE-ID']&&overrides.has(k))continue;
       if(seen.has(k))continue;seen.add(k);
-      items.push({title,desc:icsText(ev.DESCRIPTION?.val),date:ymd(o.start),time:pad(o.start.getHours())+':'+pad(o.start.getMinutes()),dur:o.dur,key:k});
+      items.push({cal:'',title,desc:icsText(ev.DESCRIPTION?.val),date:ymd(o.start),time:pad(o.start.getHours())+':'+pad(o.start.getMinutes()),dur:o.dur,key:k});
     }
   }
-  if(!items.length){toast('No timed events in the last or next 12 months');return}
-  const already=new Set(S.appts.map(a=>a.importKey).filter(Boolean));
-  ICS=items.filter(i=>!already.has(i.key));
-  const t=today(),past=ICS.filter(i=>i.date<t).length,people=new Set(ICS.map(i=>cleanName(i.title).toLowerCase())).size;
-  const html=`<div class="form"><div class="card-head" style="margin:0"><h2 class="h2">Import calendar</h2><button class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
-    <p style="margin:0">Found <b>${ICS.length}</b> appointments for about <b>${people}</b> people: ${past} in the past year and ${ICS.length-past} coming up.${items.length>ICS.length?` ${items.length-ICS.length} were imported before and are skipped.`:''}</p>
-    <p class="hint">Each event title becomes the client name ("Session with" and similar words are dropped). You can rename clients afterwards.</p>
-    <label class="fld"><span>Service for these sessions</span><select id="i-svc">${S.services.map(s=>`<option value="${s.id}">${esc(s.name)} · ${money(s.price)}</option>`).join('')}</select></label>
-    <label class="chk"><input type="checkbox" id="i-past" checked> Count past ones as done & paid</label>
-    <div class="list" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:0 10px">${ICS.slice(0,30).map(i=>`<div class="row"><div class="t">${esc(fmtD(i.date,{day:'numeric',month:'short'}))}<small>${fmtT(i.time)}</small></div><div class="info"><b>${esc(cleanName(i.title))}</b><span>${i.dur} min</span></div></div>`).join('')}${ICS.length>30?`<div class="hint" style="padding:8px 0">and ${ICS.length-30} more</div>`:''}</div>
-    <div class="sheet-actions"><button class="btn ghost" data-act="close">Cancel</button><button class="btn primary" data-act="icsGo">${ic('down',16)} Import ${ICS.length}</button></div></div>`;
-  openModal(html);
+  importPreview(items);
 }
 function cleanName(t){return t.replace(/^(physio(therapy)?|session|appointment|appt|rdv|seance|séance)\s*(with|w\/|-|:|–)?\s*/i,'').replace(/\s*[-–:|]\s*(physio(therapy)?|session|appointment)$/i,'').trim()||t}
-ACT.icsGo=()=>{
-  const svc=getSvc($('#i-svc').value),pastDone=$('#i-past').checked,t=today();let nc=0;
-  for(const i of ICS){
+let IMP=[],IMPF='';
+function importPreview(items){
+  const already=new Set(S.appts.map(a=>a.importKey).filter(Boolean));
+  IMP=items.filter(i=>!already.has(i.key));IMPF='';
+  if(!IMP.length){toast(items.length?'Those appointments are already in PhysioDesk':'No timed appointments in the last 12 months or the next 12');return}
+  const cals={};IMP.forEach(i=>{if(i.cal)cals[i.cal]=(cals[i.cal]||0)+1});
+  const names=Object.keys(cals).sort((x,y)=>cals[y]-cals[x]);
+  const skipped=items.length-IMP.length;
+  openModal(`<div class="form"><div class="card-head" style="margin:0"><h2 class="h2">Import appointments</h2><button class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+    ${names.length>1?`<label class="fld"><span>From calendar</span><select id="i-cal" data-change="impFilter"><option value="">All calendars (${IMP.length})</option>${names.map(n=>`<option value="${esc(n)}">${esc(n)} (${cals[n]})</option>`).join('')}</select></label>`:''}
+    <div id="i-sum"></div>${skipped?`<p class="hint">${skipped} were imported before and are skipped.</p>`:''}
+    <p class="hint">Each event title becomes the client name ("Session with" and similar words are dropped). You can rename clients afterwards.</p>
+    <div class="r2"><label class="fld"><span>Where</span><select id="i-place" data-change="impPlace">${S.places.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
+    <label class="fld" id="i-kind-wrap" hidden><span>Whose clients</span><select id="i-kind"><option value="private">Mine (clinic takes %)</option><option value="clinic">Clinic’s (fixed fee)</option></select></label></div>
+    <label class="fld"><span>Service</span><select id="i-svc">${S.services.map(s=>`<option value="${s.id}">${esc(s.name)} · ${money(s.price)}</option>`).join('')}</select></label>
+    <label class="chk"><input type="checkbox" id="i-past" checked> Count past ones as done & paid</label>
+    <div class="list" id="i-list" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:0 10px"></div>
+    <p class="hint">You can change the clinic or price of single sessions afterwards.</p>
+    <div class="sheet-actions"><button class="btn ghost" data-act="close">Cancel</button><button class="btn primary" id="i-go" data-act="impGo">Import</button></div></div>`,impRefresh);
+}
+const impItems=()=>IMP.filter(i=>!IMPF||i.cal===IMPF);
+function impRefresh(){
+  const L=impItems(),t=today(),past=L.filter(i=>i.date<t).length,people=new Set(L.map(i=>cleanName(i.title).toLowerCase())).size;
+  $('#i-sum').innerHTML=`<p style="margin:0">Found <b>${L.length}</b> appointments for about <b>${people}</b> people: ${past} in the past year and ${L.length-past} coming up.</p>`;
+  $('#i-list').innerHTML=L.slice(0,40).map(i=>`<div class="row"><div class="t">${esc(fmtD(i.date,{day:'numeric',month:'short'}))}<small>${fmtT(i.time)}</small></div><div class="info"><b>${esc(cleanName(i.title))}</b><span>${i.dur} min${i.cal?' · '+esc(i.cal):''}</span></div></div>`).join('')+(L.length>40?`<div class="hint" style="padding:8px 0">and ${L.length-40} more</div>`:'');
+  const g=$('#i-go');g.innerHTML=`${ic('down',16)} Import ${L.length}`;g.disabled=!L.length;
+}
+CHANGE.impFilter=el=>{IMPF=el.value;impRefresh()};
+CHANGE.impPlace=el=>{$('#i-kind-wrap').hidden=!!getPlace(el.value).own};
+ACT.impGo=()=>{
+  const L=impItems();if(!L.length)return;
+  const svc=getSvc($('#i-svc').value),pl=getPlace($('#i-place').value),kind=pl.own?'private':$('#i-kind').value,pastDone=$('#i-past').checked,t=today();let nc=0;
+  const price=kind==='clinic'?+pl.fee:+svc.price||0,pct=kind==='private'?+pl.cut||0:0;
+  for(const i of L){
     const nm=cleanName(i.title);let c=S.clients.find(x=>x.name.toLowerCase()===nm.toLowerCase());
-    if(!c){const ph=(i.desc.match(/(\+?\d[\d \-]{6,}\d)/)||[])[1]||'';c={id:uid(),name:nm,phone:ph.trim(),createdAt:t};S.clients.push(c);nc++}
+    if(!c){const ph=(String(i.desc||'').match(/(\+?\d[\d \-]{6,}\d)/)||[])[1]||'';c={id:uid(),name:nm,phone:ph.trim(),createdAt:t};S.clients.push(c);nc++}
     const past=i.date<t;
-    S.appts.push({id:uid(),clientId:c.id,serviceId:svc.id||'',date:i.date,time:i.time,duration:i.dur,price:svc.price||0,cost:0,
-      status:past&&pastDone?'done':'scheduled',paid:past&&pastDone,method:'Cash',notes:i.desc.slice(0,400),importKey:i.key,createdAt:t});
+    S.appts.push({id:uid(),clientId:c.id,serviceId:svc.id||'',placeId:pl.id,kind,date:i.date,time:i.time,duration:i.dur,price,cut:r2(price*pct/100),cutPct:pct,cost:0,
+      status:past&&pastDone?'done':'scheduled',paid:past&&pastDone,method:'Cash',notes:String(i.desc||'').slice(0,400),importKey:i.key,calSource:'import',createdAt:t});
   }
-  const n=ICS.length;S.settings.onboarded=true;save();closeModal();render();toast(`Imported ${n} appointments and ${nc} new clients`);
+  S.settings.lastPlace=pl.id;S.settings.onboarded=true;save();closeModal();render();toast(`Imported ${L.length} appointments and ${nc} new clients`);
+};
+async function importFromPhone(){
+  const P=CALP();
+  if(!P){toast('This works in the installed app. Here, use "From a file".');return}
+  try{
+    if(!(await P.requestAccess()).granted){toast('Allow calendar access: phone Settings → Apps → PhysioDesk → Permissions → Calendar');return}
+    toast('Reading your calendar…');
+    const now=Date.now(),r=await P.listInstances({start:now-365*864e5,end:now+365*864e5});
+    const mine=new Set(S.appts.map(a=>a.calEventId).filter(Boolean));
+    const items=(r.events||[]).filter(e=>e.title&&!e.allDay&&+e.status!==2&&!mine.has(String(e.eventId))&&!/Booked in PhysioDesk/.test(e.description||''))
+      .map(e=>{const st=new Date(+e.begin);return{title:String(e.title).trim(),desc:e.description||'',date:ymd(st),time:pad(st.getHours())+':'+pad(st.getMinutes()),
+        dur:Math.min(600,Math.max(5,Math.round((+e.end-+e.begin)/6e4)||45)),key:'cal:'+e.eventId+':'+e.begin,cal:e.calendarName||'Calendar'}})
+      .sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time));
+    importPreview(items);
+  }catch(e){toast('Could not read the calendar: '+(e&&e.message||e))}
+}
+
+
+/* ================= phone calendar + reminder notifications (installed app only) ================= */
+const CALP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioCalendar;
+const LNP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications;
+let syncT=null,syncing=false,syncAgain=false,calWarned=false;
+function scheduleSync(){if(!isNative())return;clearTimeout(syncT);syncT=setTimeout(runSync,900)}
+async function runSync(){
+  if(syncing){syncAgain=true;return}syncing=true;
+  try{await syncCalendar()}catch(e){console.warn('calendar',e)}
+  try{await syncReminders()}catch(e){console.warn('reminders',e)}
+  syncing=false;if(syncAgain){syncAgain=false;runSync()}
+}
+function trashCal(list){for(const a of list)if(a.calEventId&&a.calSource!=='import'){S.calTrash.push(a.calEventId);a.calEventId=''}}
+function apptStart(a){const d=pd(a.date);const[h,m]=a.time.split(':').map(Number);d.setHours(h,m||0,0,0);return d.getTime()}
+function calPayload(a){
+  const c=getClient(a.clientId),sv=getSvc(a.serviceId),p=getPlace(a.placeId),st=apptStart(a);
+  return{calendarId:String(S.settings.calId),title:(c?.name||'Client')+' · '+sv.name+(a.status==='noshow'?' (no-show)':''),start:st,end:st+(+a.duration||45)*60000,
+    location:p.own?(c?.address||''):p.name,description:[c?.phone?'Phone: '+c.phone:'',a.notes||'','Booked in PhysioDesk'].filter(Boolean).join('\n')};
+}
+async function syncCalendar(){
+  const P=CALP();if(!P)return;
+  const st=S.settings;let changed=false;
+  if(!st.calSync||!st.calId)return;
+  for(const id of S.calTrash.splice(0)){changed=true;try{await P.deleteEvent({id})}catch(e){}}
+  const from=addDays(today(),-7);
+  try{
+    for(const a of S.appts){
+      if(a.demo||a.calSource==='import'||a.date<from)continue;
+      if(a.status==='cancelled'){if(a.calEventId){try{await P.deleteEvent({id:a.calEventId})}catch(e){}a.calEventId='';a.calSig='';changed=true}continue}
+      const pl=calPayload(a),sig=JSON.stringify(pl);
+      if(a.calEventId&&a.calSig===sig)continue;
+      if(a.calEventId&&a.calCal!==st.calId){try{await P.deleteEvent({id:a.calEventId})}catch(e){}a.calEventId=''}
+      if(a.calEventId){const r=await P.updateEvent({id:a.calEventId,...pl});if(!r.updated)a.calEventId=''}
+      if(!a.calEventId){const r=await P.createEvent(pl);a.calEventId=String(r.id)}
+      a.calSig=sig;a.calCal=st.calId;changed=true;
+    }
+    calWarned=false;
+  }catch(e){if(!calWarned){calWarned=true;toast('Could not update your calendar. Check PhysioDesk still has calendar access.')}}
+  if(changed)saveQuiet();
+}
+function notifId(s){let h=7;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%2000000000+1}
+function remindAt(a){const v=String(S.settings.remindBefore||'0');if(v==='0')return 0;
+  if(v==='eve'){const d=pd(addDays(a.date,-1));d.setHours(20,0,0,0);return d.getTime()}return apptStart(a)-(+v)*60000}
+async function syncReminders(){
+  const L=LNP();if(!L)return;
+  const pend=(await L.getPending()).notifications||[];
+  if(pend.length)await L.cancel({notifications:pend.map(n=>({id:n.id}))});
+  if(String(S.settings.remindBefore||'0')==='0')return;
+  if((await L.checkPermissions()).display!=='granted')return;
+  const now=Date.now();
+  const list=S.appts.filter(a=>a.status==='scheduled'&&!a.demo).map(a=>({a,t:remindAt(a)}))
+    .filter(x=>x.t>now+20000&&x.t<now+30*864e5).sort((x,y)=>x.t-y.t).slice(0,60);
+  if(!list.length)return;
+  await L.schedule({notifications:list.map(({a,t})=>{const c=getClient(a.clientId);return{id:notifId(a.id),
+    title:`Remind ${c?.name||'your client'} · ${relDay(a.date)==='Today'?'':relDay(a.date)+' '}${fmtT(a.time)}`.replace('·  ','· '),
+    body:c?.phone?'Tap to open WhatsApp with the reminder ready to send.':'This client has no phone number saved.',
+    schedule:{at:new Date(t),allowWhileIdle:true},extra:{apptId:a.id}}})});
+}
+async function askNotifPermission(){const L=LNP();if(!L)return false;try{let p=await L.checkPermissions();if(p.display!=='granted')p=await L.requestPermissions();return p.display==='granted'}catch(e){return false}}
+async function pickCalendar(){
+  const P=CALP();if(!P){toast('This works in the installed app.');return}
+  try{
+    if(!(await P.requestAccess()).granted){toast('Allow calendar access: phone Settings → Apps → PhysioDesk → Permissions → Calendar');return}
+    const r=await P.listCalendars();
+    const L=(r.calendars||[]).filter(c=>c.writable).sort((a,b)=>(b.accountType==='com.google')-(a.accountType==='com.google')||(b.primary-a.primary));
+    if(!L.length){toast('No calendar on this phone can be written to. Add your Google account in the phone settings first.');return}
+    openModal(`<div class="form"><h2 class="h2">Which calendar?</h2><p class="muted" style="margin:0">Pick the one with your Gmail address, so the sessions also show on calendar.google.com.</p>
+      <div class="list">${L.map(c=>`<button class="row" data-act="calChosen" data-id="${esc(c.id)}" data-name="${esc(c.name)}" data-acc="${esc(c.account)}"><div class="info"><b>${esc(c.name)}</b><span>${esc(c.account)}${c.accountType==='com.google'?' · Google':''}</span></div>${String(c.id)===String(S.settings.calId)?ic('check'):''}</button>`).join('')}</div>
+      <div class="sheet-actions"><button class="btn ghost" data-act="close">Cancel</button></div></div>`);
+  }catch(e){toast('Could not read the calendars: '+(e&&e.message||e))}
+}
+ACT.pickCal=()=>pickCalendar();
+ACT.importCal=()=>importFromPhone();
+ACT.calChosen=el=>{const changedCal=String(S.settings.calId)!==el.dataset.id;S.settings.calId=el.dataset.id;S.settings.calName=el.dataset.name+(el.dataset.acc&&el.dataset.acc!==el.dataset.name?' · '+el.dataset.acc:'');S.settings.calSync=true;
+  save();closeModal();render();toast(changedCal?'Your sessions will be added to '+el.dataset.name:'Calendar kept')};
+CHANGE.calSync=el=>{
+  if(!el.checked){S.settings.calSync=false;save();render();toast('Sessions are no longer added to the calendar');return}
+  if(!CALP()){el.checked=false;toast('This works in the installed app.');return}
+  el.checked=false;
+  if(S.settings.calId){S.settings.calSync=true;save();render();toast('Sessions will be added to '+S.settings.calName);return}
+  pickCalendar();
 };
 
 /* ================= sample data ================= */
@@ -1252,6 +1460,8 @@ function loadDemo(){
     ['Tony Azar','76 845 093','Hamstring strain','M'],['Rita Chahine','03 251 884','Sciatica','F'],['Sami Daher','70 393 517','Rotator cuff tendinopathy','M'],['Joelle Bou Khalil','81 127 640','Plantar fasciitis','F']];
   const t=today();
   const svc=id=>S.services.find(s=>s.id===id)||S.services[0];
+  let clinic=S.places.find(p=>!p.own);if(!clinic){clinic={id:'p1',name:'Clinic',cut:30,fee:15};S.places.push(clinic)}
+  const placeOf=i=>[7,11].includes(i)?['own','private']:[6,8,9,10].includes(i)?[clinic.id,'clinic']:[clinic.id,'private'];
   const cl=people.map(([name,phone,condition,g],i)=>({id:'demo-c'+i,name,phone,condition,gender:g==='F'?'Female':'Male',dob:(1960+Math.floor(rnd()*40))+'-'+pad(1+Math.floor(rnd()*12))+'-'+pad(1+Math.floor(rnd()*27)),demo:true,createdAt:addDays(t,-150)}));
   S.clients.push(...cl);
   const slots=['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00','18:00'];
@@ -1264,20 +1474,20 @@ function loadDemo(){
       let tm=pick(slots);if(used.has(tm))continue;used.add(tm);
       const c=cl[Math.floor(Math.pow(rnd(),1.3)*cl.length)];
       const sid=!first[c.id]?'s2':c.name==='Hiba Mansour'?'s3':c.name==='Tony Azar'&&rnd()<.5?'s4':'s1';first[c.id]=true;
-      const s=svc(sid);const past=k<0||(k===0&&toMin(tm)+s.duration<nowMin());
+      const s=svc(sid);const[placeId,kind]=placeOf(cl.indexOf(c));const pct=kind==='private'&&placeId!=='own'?+clinic.cut:0;const price=kind==='clinic'?+clinic.fee:s.price;const past=k<0||(k===0&&toMin(tm)+s.duration<nowMin());
       let status='scheduled',paid=false;
       if(past){const r=rnd();status=r<.9?'done':r<.95?'noshow':'cancelled';paid=status==='done'&&(k<-10?rnd()<.97:rnd()<.75)}
-      S.appts.push({id:'demo-a'+k+'-'+j,clientId:c.id,serviceId:sid,date:d,time:tm,duration:s.duration,price:s.price,cost:sid==='s3'?5:0,status,paid,
+      S.appts.push({id:'demo-a'+k+'-'+j,clientId:c.id,serviceId:sid,placeId,kind,date:d,time:tm,duration:s.duration,price,cut:r2(price*pct/100),cutPct:pct,cost:sid==='s3'?5:0,status,paid,
         method:paid?pick(['Cash','Cash','Cash','Bank transfer','Card','Wallet app']):'Cash',notes:'',demo:true,createdAt:d});
     }
   }
-  for(let i=5;i>=0;i--){const ym=addMonths(t.slice(0,7),-i);if(i===0&&+t.slice(8)<5){S.expenses.push({id:'demo-e10',date:ym+'-01',category:'Rent',amount:450,note:'Clinic rent',demo:true});continue}
-    S.expenses.push({id:'demo-e1'+i,date:ym+'-01',category:'Rent',amount:450,note:'Clinic rent',demo:true});
-    S.expenses.push({id:'demo-e2'+i,date:ym+'-05',category:'Utilities',amount:60+Math.round(rnd()*40),note:'Electricity & generator',demo:true});
+  for(let i=5;i>=0;i--){const ym=addMonths(t.slice(0,7),-i);if(i===0&&+t.slice(8)<5){S.expenses.push({id:'demo-e10',date:ym+'-01',category:'Transport',amount:70,note:'Fuel',demo:true});continue}
+    S.expenses.push({id:'demo-e1'+i,date:ym+'-01',category:'Transport',amount:70,note:'Fuel',demo:true});
+    S.expenses.push({id:'demo-e2'+i,date:ym+'-05',category:'Utilities',amount:15+Math.round(rnd()*10),note:'Phone line',demo:true});
     if(rnd()<.8)S.expenses.push({id:'demo-e3'+i,date:ym+'-12',category:'Supplies',amount:30+Math.round(rnd()*70),note:pick(['Kinesio tape & gel','Massage oil, towels','Exercise bands']),demo:true});
   }
   S.expenses=S.expenses.filter(e=>!e.demo||e.date<=t);
-  S.expenses.push({id:'demo-e9',date:addMonths(t.slice(0,7),-3)+'-18',category:'Equipment',amount:650,note:'TENS / ultrasound unit',demo:true});
+  S.expenses.push({id:'demo-e9',date:addMonths(t.slice(0,7),-3)+'-18',category:'Equipment',amount:220,note:'Portable massage table',demo:true});
   const txt=['Reports less stiffness in the morning. Manual therapy and core activation. Home: bird-dog 3×10, cat-camel.','Pain worse after long sitting. Soft tissue release, McKenzie extensions. Advised breaks every 45 min.','Good progress. Walking 30 min without pain. Progressed to bridges with band.','Range improving. Added resisted exercises. Review in 1 week.'];
   ['demo-c0','demo-c1','demo-c2'].forEach((cid,ci)=>{const A=S.appts.filter(a=>a.clientId===cid&&a.status==='done').sort(byTime);
     A.slice(-5).forEach((a,i)=>S.notes.push({id:'demo-n'+ci+i,clientId:cid,apptId:a.id,date:a.date,pain:Math.max(1,8-i-(ci%2)),text:txt[i%txt.length],demo:true}))});
@@ -1287,10 +1497,12 @@ function clearDemo(){const isD=x=>x.demo;S.clients=S.clients.filter(x=>!isD(x));
 /* ================= welcome ================= */
 function welcome(){
   openModal(`<div class="form"><span class="logo" style="width:48px;height:48px;border-radius:14px">${ic('pulse',26)}</span>
-    <div><h2 class="h1" style="font-size:25px">Welcome to PhysioDesk</h2><p class="muted" style="margin:6px 0 0">Your appointments, clients, treatment notes and income in one place. Everything stays on this phone and works without internet.</p></div>
-    <label class="fld"><span>Clinic name</span><input id="o-clinic" placeholder="e.g. Move Well Physio" value="${esc(S.settings.clinic)}"></label>
-    <div class="r2"><label class="fld"><span>Your name</span><input id="o-name" placeholder="e.g. Dr. Karim" value="${esc(S.settings.therapist)}"></label>
+    <div><h2 class="h1" style="font-size:25px">Welcome to PhysioDesk</h2><p class="muted" style="margin:6px 0 0">Your appointments, clients, treatment notes and income in one place, for the clinics you work at and your own clients. Everything stays on this phone.</p></div>
+    <div class="r2"><label class="fld"><span>Your name</span><input id="o-name" placeholder="e.g. Karim" value="${esc(S.settings.therapist)}"></label>
     <label class="fld"><span>Currency</span><input id="o-cur" value="${esc(S.settings.currency)}" maxlength="4"></label></div>
+    <label class="fld"><span>Clinic you work at <i>(more in Settings)</i></span><input id="o-place" placeholder="e.g. Hamra Physio Center"></label>
+    <div class="r2"><label class="fld"><span>% it keeps from your clients</span><input id="o-cut" type="number" inputmode="decimal" value="30"></label>
+    <label class="fld"><span>It pays you per clinic client</span><input id="o-fee" type="number" inputmode="decimal" value="15"></label></div>
     <div class="sheet-actions" style="flex-wrap:wrap"><button class="btn ghost" data-act="onbStart" data-demo="1">Try it with sample data</button><button class="btn primary" data-act="onbStart">Start</button></div></div>`);
 }
 
@@ -1299,6 +1511,16 @@ applyTheme();
 render();
 if(S.settings.pinHash)lockNow();
 else if(!S.settings.onboarded&&!S.appts.length)welcome();
+if(LNP()){
+  LNP().addListener('localNotificationActionPerformed',ev=>{
+    const a=S.appts.find(x=>x.id===(ev&&ev.notification&&ev.notification.extra&&ev.notification.extra.apptId));if(!a)return;
+    const c=getClient(a.clientId);
+    if(c&&c.phone)setTimeout(()=>{location.href=waHref(c.phone,reminderText(a))},400);else{go('today');openModal(apptDetail(a))}
+  });
+  if(!S.settings.notifAsked&&String(S.settings.remindBefore)!=='0'){S.settings.notifAsked=true;saveQuiet();setTimeout(askNotifPermission,1500)}
+}
+scheduleSync();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSync()});
 setInterval(()=>{if(!stack.length&&route().tab!=='setup'&&!document.hidden&&document.activeElement?.tagName!=='INPUT')render()},60000);
 </script>
 </body>

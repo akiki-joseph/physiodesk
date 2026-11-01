@@ -2,7 +2,7 @@ name: Build PhysioDesk APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'claude/**' ]
     # Editing only the README doesn't need a new APK.
     paths-ignore:
       - '**.md'
@@ -33,6 +33,14 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+
+      - name: Calendar connector and permissions
+        run: |
+          SRC=android/app/src/main
+          cp native/PhysioCalendarPlugin.java native/MainActivity.java $SRC/java/com/joseph/physiodesk/
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.READ_CALENDAR" />\n    <uses-permission android:name="android.permission.WRITE_CALENDAR" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n</manifest>#' $SRC/AndroidManifest.xml
+          grep -c "CALENDAR\|EXACT_ALARM" $SRC/AndroidManifest.xml
+          grep -q registerPlugin $SRC/java/com/joseph/physiodesk/MainActivity.java
 
       - name: App icon
         run: |
