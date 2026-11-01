@@ -1,0 +1,6 @@
+{
+  "appId": "com.joseph.physiodesk",
+  "appName": "PhysioDesk",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}

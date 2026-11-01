@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PhysioDesk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#11635b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: phone-first clinic app. Bottom tab bar on phones, left rail from 900px.
+   Cards only group records (a day's sessions, a client file, a month's money). */
+:root{
+  --bg:#f2f6f5; --surface:#ffffff; --sunk:#e8efed; --line:#d7e1de; --text:#13211f; --muted:#5a6b67;
+  --primary:#11635b; --primary-2:#0b4a44; --on-primary:#ffffff; --primary-soft:#dbeeea;
+  --accent:#d9603f; --accent-soft:#fbe4dc;
+  --ok:#1d7643; --ok-soft:#dcf1e4; --warn:#9a5806; --warn-soft:#fbeed5; --bad:#b3372a; --bad-soft:#f8dfda;
+  --chart-a:#11635b; --chart-b:#e2a48e; --chart-c:#d9603f;
+  --shadow:0 1px 2px rgb(19 33 31/.06),0 10px 28px rgb(19 33 31/.08);
+  --f-display:"Bricolage Grotesque",Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-body:Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1413; --surface:#152020; --sunk:#1c2928; --line:#293836; --text:#e5eeeb; --muted:#93a6a1;
+  --primary:#55b8aa; --primary-2:#86cfc4; --on-primary:#05201c; --primary-soft:#163833;
+  --accent:#f08a6e; --accent-soft:#3b221b;
+  --ok:#5fca8c; --ok-soft:#163224; --warn:#e5a64c; --warn-soft:#382a13; --bad:#f17d6f; --bad-soft:#3c1f1b;
+  --chart-a:#55b8aa; --chart-b:#8f5c4f; --chart-c:#f08a6e;
+  --shadow:0 1px 2px rgb(0 0 0/.3),0 10px 28px rgb(0 0 0/.35); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d1413; --surface:#152020; --sunk:#1c2928; --line:#293836; --text:#e5eeeb; --muted:#93a6a1;
+  --primary:#55b8aa; --primary-2:#86cfc4; --on-primary:#05201c; --primary-soft:#163833;
+  --accent:#f08a6e; --accent-soft:#3b221b;
+  --ok:#5fca8c; --ok-soft:#163224; --warn:#e5a64c; --warn-soft:#382a13; --bad:#f17d6f; --bad-soft:#3c1f1b;
+  --chart-a:#55b8aa; --chart-b:#8f5c4f; --chart-c:#f08a6e;
+  --shadow:0 1px 2px rgb(0 0 0/.3),0 10px 28px rgb(0 0 0/.35); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+body.noscroll{overflow:hidden}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--primary)}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ic{flex:none;display:block}
+.num{font-variant-numeric:tabular-nums}
+
+/* shell */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--surface);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 10px;color:var(--muted);font-size:11px;font-weight:600;text-decoration:none}
+.nav a.on{color:var(--primary)}
+.nav .brand{display:none}
+.main{padding-block:18px 132px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.fab{position:fixed;z-index:31;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px));
+  width:58px;height:58px;border-radius:18px;border:0;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;box-shadow:var(--shadow)}
+.fab:active{transform:scale(.96)}
+@media (min-width:900px){
+  .nav{top:0;right:auto;width:228px;flex-direction:column;gap:4px;border-top:0;border-right:1px solid var(--line);padding:22px 14px}
+  .nav a{flex:none;flex-direction:row;gap:12px;padding:10px 12px;font-size:14.5px;border-radius:10px}
+  .nav a.on{background:var(--primary-soft)}
+  .nav .brand{display:flex;align-items:center;gap:10px;padding:0 8px 18px;font-family:var(--f-display);font-weight:700;font-size:19px}
+  .main{margin-left:228px;padding-block:28px 48px;padding-left:max(32px,env(safe-area-inset-left,0px));padding-right:max(32px,env(safe-area-inset-right,0px))}
+  .fab{bottom:calc(28px + env(safe-area-inset-bottom,0px));right:calc(28px + env(safe-area-inset-right,0px))}
+}
+.logo{width:30px;height:30px;border-radius:9px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center}
+
+/* type */
+.h1{font-family:var(--f-display);font-size:27px;line-height:1.1;font-weight:700;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.h2{font-family:var(--f-display);font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0}
+.eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.page-head > div{min-width:0}
+
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.grid2{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:760px){.grid2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:var(--warn-soft);color:var(--text)}
+.banner .ic{color:var(--warn);margin-top:2px}
+.banner b{display:block}
+.empty{padding:22px 8px;text-align:center;color:var(--muted)}
+.empty .h2{color:var(--text);margin-bottom:4px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--text);
+  padding:10px 14px;border-radius:11px;font-weight:600;font-size:14px;text-decoration:none;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.soft{background:var(--primary-soft);border-color:transparent;color:var(--primary-2)}
+:root[data-theme="dark"] .btn.soft{color:var(--primary-2)}
+.btn.ok{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.btn.bad{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.sm{padding:7px 11px;font-size:13px;border-radius:9px}
+.btn.icon{padding:8px;border-radius:10px}
+.btn.block{width:100%}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--sunk);border-radius:11px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:7px 13px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgb(0 0 0/.08)}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.b-sched{background:var(--primary-soft);color:var(--primary-2)}
+.b-done{background:var(--ok-soft);color:var(--ok)}
+.b-noshow{background:var(--bad-soft);color:var(--bad)}
+.b-cancel{background:var(--sunk);color:var(--muted)}
+.b-unpaid{background:var(--warn-soft);color:var(--warn)}
+.b-paid{background:var(--ok-soft);color:var(--ok)}
+
+/* KPI tiles */
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:760px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.kpi .v{font-family:var(--f-display);font-size:25px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15;overflow-wrap:anywhere}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi.hero{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.kpi.hero .eyebrow,.kpi.hero .s{color:var(--on-primary);opacity:.8}
+.kpi.warn .v{color:var(--warn)}
+
+/* appointment rows */
+.list{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-top:1px solid var(--line);text-decoration:none;color:inherit;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left}
+.list > .row:first-child{border-top:0}
+.row:active{background:var(--sunk)}
+.row .t{width:62px;flex:none;font-weight:700;font-variant-numeric:tabular-nums;font-size:14px}
+.row .t small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.row .stripe{width:4px;align-self:stretch;border-radius:4px;background:var(--svc,var(--primary));flex:none}
+.row .info{flex:1;min-width:0}
+.row .info b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .info span{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .end{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.row[role=button]{cursor:pointer}
+.row.cancelled .info b{text-decoration:line-through;color:var(--muted)}
+.amt{font-weight:700;font-variant-numeric:tabular-nums}
+.amt.neg{color:var(--bad)}
+.date-sep{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:14px 4px 4px}
+.list > .date-sep:first-child{padding-top:0}
+
+/* avatar */
+.av{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:14px;flex:none;
+  background:color-mix(in srgb,var(--hue) 18%,var(--surface));color:color-mix(in srgb,var(--hue) 75%,var(--text))}
+.av.lg{width:58px;height:58px;border-radius:16px;font-size:20px}
+
+/* calendar */
+.cal-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cal-head .ttl{flex:1;min-width:140px;font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:-.01em}
+.cal-head .ttl small{display:block;font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--muted);letter-spacing:0}
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.strip button{border:0;background:transparent;border-radius:12px;padding:7px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.strip .wd{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.strip .dn{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;width:34px;height:34px;display:grid;place-items:center;border-radius:11px}
+.strip .dots{height:6px;display:flex;gap:2px}
+.strip .dots i{width:5px;height:5px;border-radius:50%;background:var(--primary)}
+.strip button.today .dn{color:var(--accent)}
+.strip button.on .dn{background:var(--primary);color:var(--on-primary)}
+.day-sum{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.day-sum b{color:var(--text);font-variant-numeric:tabular-nums}
+.tl{position:relative;user-select:none}
+.tl .hr{position:relative;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tl .hr span{position:absolute;top:-8px;left:0;width:48px;background:var(--surface);padding-right:4px}
+.tl .half{position:absolute;left:56px;right:0;border-top:1px dashed var(--line);opacity:.6}
+.blk{position:absolute;border-radius:9px;padding:5px 8px;overflow:hidden;font-size:12.5px;line-height:1.25;border:0;text-align:left;
+  background:color-mix(in srgb,var(--svc) 16%,var(--surface));border-left:4px solid var(--svc);color:var(--text)}
+.blk b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.blk span{display:block;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk.done{background:color-mix(in srgb,var(--ok) 13%,var(--surface));border-left-color:var(--ok)}
+.blk.noshow{background:var(--bad-soft);border-left-color:var(--bad)}
+.blk.cancelled{background:var(--sunk);border-left-color:var(--line);opacity:.75}
+.blk.cancelled b{text-decoration:line-through}
+.blk .ck{position:absolute;right:6px;top:5px;color:var(--ok)}
+.now{position:absolute;left:50px;right:0;height:0;border-top:2px solid var(--accent);z-index:3;pointer-events:none}
+.now::before{content:"";position:absolute;left:-5px;top:-6px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.month .wd{font-size:11px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px}
+.month button{border:1px solid var(--line);background:var(--surface);border-radius:10px;min-height:64px;padding:6px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.month button.out{opacity:.4}
+.month button.today{border-color:var(--accent)}
+.month .d{font-weight:700;font-size:13.5px;font-variant-numeric:tabular-nums}
+.month .c{font-size:11px;font-weight:700;background:var(--primary-soft);color:var(--primary-2);border-radius:6px;padding:1px 5px}
+.month .m{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* chart */
+.chart svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;font-size:13.5px}
+.bar-row .track{grid-column:1/-1;height:8px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.bar-row .track i{display:block;height:100%;border-radius:5px;background:var(--svc,var(--primary))}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.facts div{min-width:0}
+.facts b{display:block;font-family:var(--f-display);font-size:19px;font-variant-numeric:tabular-nums}
+.facts span{font-size:12.5px;color:var(--muted)}
+
+/* ledger */
+.ledger{display:flex;flex-direction:column}
+.ledger .l{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.ledger .l:first-child{border-top:0}
+.ledger .l.total{border-top:2px solid var(--text);font-weight:700;font-size:16px;padding-top:10px}
+
+/* forms */
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld > span{font-size:12.5px;font-weight:700;color:var(--muted)}
+.fld > span i{font-style:normal;font-weight:500}
+.inp,.fld input:not([type=checkbox]):not([type=range]),.fld select,.fld textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 11px;font-size:15px;min-width:0}
+.fld textarea{resize:vertical}
+.fld input:focus,.fld select:focus,.fld textarea:focus,.inp:focus{outline:2px solid var(--primary);outline-offset:-1px;border-color:transparent}
+.form{display:flex;flex-direction:column;gap:12px}
+.r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.r3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.chk{display:flex;align-items:center;gap:10px;font-weight:600}
+.chk input{width:20px;height:20px;accent-color:var(--primary)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+.chips button.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.ac{position:relative}
+.ac-list{position:absolute;z-index:5;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:230px;overflow:auto}
+.ac-list button{display:flex;gap:10px;align-items:center;width:100%;border:0;background:none;padding:9px 11px;text-align:left}
+.ac-list button:hover,.ac-list button:focus{background:var(--sunk)}
+.ac-list .av{width:30px;height:30px;font-size:12px;border-radius:9px}
+.warnbox{padding:9px 11px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;font-weight:600}
+.search{position:relative}
+.search .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search input{padding-left:40px!important}
+.pain{display:flex;align-items:center;gap:10px}
+.pain input{flex:1;accent-color:var(--accent)}
+.pain output{width:52px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* modal sheet */
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.scrim{position:absolute;inset:0;background:rgb(6 14 13/.5);opacity:0;transition:opacity .18s}
+.sheet{position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;
+  padding:20px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));
+  transform:translateY(24px);opacity:0;transition:transform .2s ease,opacity .18s}
+.modal.in .scrim{opacity:1}
+.modal.in .sheet{transform:none;opacity:1}
+@media (min-width:640px){.modal{align-items:center}.sheet{border-radius:20px;max-height:88vh}}
+.sheet .grab{width:40px;height:4px;border-radius:4px;background:var(--line);margin:-8px auto 12px}
+.sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;position:sticky;bottom:-20px;background:var(--surface);padding-block:10px 0}
+.detail-top{display:flex;gap:12px;align-items:flex-start}
+.detail-top .stripe{width:5px;align-self:stretch;border-radius:4px;background:var(--svc)}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 14px;font-size:14px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.sep{height:1px;background:var(--line);margin:4px 0}
+
+/* client page */
+.client-top{display:flex;gap:14px;align-items:center}
+.client-top > div{min-width:0}
+.stat4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.stat4 div{background:var(--sunk);border-radius:11px;padding:9px 10px;min-width:0}
+.stat4 b{display:block;font-family:var(--f-display);font-size:17px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat4 span{font-size:11.5px;color:var(--muted)}
+.note{padding:12px 0;border-top:1px solid var(--line)}
+.note:first-child{border-top:0}
+.note p{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.note .meta{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
+.painchip{font-weight:700;border-radius:7px;padding:2px 7px;font-size:12px;background:var(--accent-soft);color:var(--accent)}
+.back{display:inline-flex;align-items:center;gap:4px;color:var(--muted);text-decoration:none;font-weight:600;font-size:14px}
+
+/* settings */
+.set-list{display:flex;flex-direction:column;gap:12px}
+.svc-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.svc-row:first-child{border-top:0}
+.svc-row .dot{width:12px;height:12px;border-radius:4px;background:var(--svc);flex:none}
+.svc-row .info{flex:1;min-width:0}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches label{position:relative}
+.swatches input{position:absolute;opacity:0}
+.swatches span{display:block;width:30px;height:30px;border-radius:9px;background:var(--svc);border:3px solid transparent}
+.swatches input:checked + span{border-color:var(--text)}
+
+/* lock + toast */
+.lock{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+.pin-dots{display:flex;gap:14px}
+.pin-dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--primary)}
+.pin-dots i.f{background:var(--primary)}
+.pin-dots.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
+.pad button{height:64px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:24px;font-weight:600;font-family:var(--f-display)}
+.pad button.ghost{border:0;background:none;font-size:14px;color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(10px);z-index:90;background:var(--text);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%)}
+@media (min-width:900px){#toast{bottom:40px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="lock-root"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="file-in" hidden>
+<script>
+"use strict";
+/* ================= storage ================= */
+const KEY='physiodesk.v1';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const SVC_COLORS=['#11635b','#2f6fd0','#8b4fc9','#d9822b','#c2417a','#3b8f3a','#5b6b7a','#c0492f'];
+const METHODS=['Cash','Card','Bank transfer','Wallet app','Insurance'];
+const EXP_CATS=['Rent','Equipment','Supplies','Transport','Utilities','Marketing','Salaries','Fees & licences','Other'];
+function defaults(){return{
+  v:1,
+  settings:{clinic:'',therapist:'',currency:'$',cc:'961',startHour:8,endHour:20,slot:45,weekStart:1,clock:'12',theme:'auto',pinHash:'',autoLock:true,onboarded:false,lastBackup:'',
+    reminder:'Hello {name}, this is a reminder of your physiotherapy session at {clinic} on {day} at {time}. Please reply to confirm. Thank you!'},
+  services:[
+    {id:'s1',name:'Physiotherapy session',price:30,duration:45,color:SVC_COLORS[0]},
+    {id:'s2',name:'Initial assessment',price:40,duration:60,color:SVC_COLORS[1]},
+    {id:'s3',name:'Home visit',price:50,duration:60,color:SVC_COLORS[2]},
+    {id:'s4',name:'Sports massage',price:35,duration:45,color:SVC_COLORS[3]}],
+  clients:[],appts:[],expenses:[],notes:[]
+}}
+function load(){
+  try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw),def=defaults();
+    return {...def,...d,settings:{...def.settings,...(d.settings||{})}}}}catch(e){}
+  return defaults();
+}
+let S=load();
+let saveFailed=false;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));saveFailed=false}catch(e){if(!saveFailed)toast('This device would not save. Export a backup now.');saveFailed=true}}
+
+/* ================= helpers ================= */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d||1)};
+const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return ymd(d)};
+const addMonths=(ym,n)=>{const d=pd(ym+'-01');d.setMonth(d.getMonth()+n);return ymd(d).slice(0,7)};
+const dim=ym=>{const[y,m]=ym.split('-').map(Number);return new Date(y,m,0).getDate()};
+const today=()=>ymd(new Date());
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
+const toMin=t=>{const[h,m]=(t||'0:0').split(':').map(Number);return h*60+(m||0)};
+const fromMin=m=>pad(Math.floor(m/60)%24)+':'+pad(m%60);
+const sum=(a,f)=>a.reduce((s,x)=>s+(f(x)||0),0);
+const weekStartOf=s=>{const d=pd(s);const off=(d.getDay()-S.settings.weekStart+7)%7;d.setDate(d.getDate()-off);return ymd(d)};
+function fmtT(t){if(!t)return'';let[h,m]=t.split(':').map(Number);if(S.settings.clock==='24')return pad(h)+':'+pad(m);const ap=h<12?'am':'pm';h=h%12||12;return h+':'+pad(m)+' '+ap}
+function fmtTs(t){if(S.settings.clock==='24')return fmtT(t);let[h,m]=t.split(':').map(Number);h=h%12||12;return h+':'+pad(m)}
+const fmtD=(s,o)=>pd(s).toLocaleDateString('en-GB',o||{weekday:'short',day:'numeric',month:'short'});
+const monthLabel=ym=>pd(ym+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+function relDay(s){const t=today();if(s===t)return'Today';if(s===addDays(t,1))return'Tomorrow';if(s===addDays(t,-1))return'Yesterday';return fmtD(s)}
+function money(n){n=+n||0;const c=S.settings.currency||'$';const v=Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:2});const neg=n<0?'−':'';return /^[A-Za-z.]{2,}$/.test(c)?neg+v+' '+c:neg+c+v}
+function moneyShort(n){n=+n||0;if(Math.abs(n)>=10000)return money(Math.round(n/100)/10).replace(/(\d)(\s|$)/,'$1k$2');return money(Math.round(n))}
+function hueOf(s){let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return SVC_COLORS[h%SVC_COLORS.length]}
+const initials=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const avatar=(c,cls='')=>`<span class="av ${cls}" style="--hue:${hueOf(c?.name||'')}">${esc(initials(c?.name))}</span>`;
+const getClient=id=>S.clients.find(c=>c.id===id);
+const getSvc=id=>S.services.find(s=>s.id===id)||{name:'Session',color:SVC_COLORS[6],price:0,duration:45};
+const byTime=(a,b)=>(a.date+a.time).localeCompare(b.date+b.time);
+const countsIncome=a=>a.status==='done'||(a.status==='noshow'&&a.paid);
+const STATUS={scheduled:['Booked','b-sched'],done:['Done','b-done'],noshow:['No-show','b-noshow'],cancelled:['Cancelled','b-cancel']};
+const statusBadge=a=>`<span class="badge ${STATUS[a.status][1]}">${STATUS[a.status][0]}</span>`;
+const payBadge=a=>countsIncome(a)?(a.paid?`<span class="badge b-paid">Paid</span>`:`<span class="badge b-unpaid">Unpaid</span>`):'';
+const isNative=()=>!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+function age(dob){if(!dob)return'';const d=pd(dob),t=new Date();let a=t.getFullYear()-d.getFullYear();if(t.getMonth()<d.getMonth()||(t.getMonth()===d.getMonth()&&t.getDate()<d.getDate()))a--;return a>=0&&a<130?a:''}
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600)}
+
+/* ================= icons ================= */
+const IC={
+home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+cal:'<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.8 2.5 3.1 5.2"/>',
+wallet:'<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10.5h18M16 15h2M6 6V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V6"/>',
+gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+phone:'<path d="M5 3h3l2 5-2.5 1.5a11 11 0 0 0 7 7L16 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+chat:'<path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/>',
+check:'<path d="M5 12.5 10 17l9-10"/>',
+x:'<path d="M6 6l12 12M18 6 6 18"/>',
+left:'<path d="M15 5l-7 7 7 7"/>',
+right:'<path d="M9 5l7 7-7 7"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+down:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+up:'<path d="M12 16V5M7 10l5-5 5 5M5 20h14"/>',
+lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+note:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+alert:'<path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.01"/>',
+pulse:'<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>',
+repeat:'<path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"/>',
+};
+const ic=(n,s=20)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ================= theme ================= */
+function applyTheme(){const t=S.settings.theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme}
+
+/* ================= stats ================= */
+function stats(from,to){
+  const A=S.appts.filter(a=>a.date>=from&&a.date<=to);
+  const inc=A.filter(countsIncome);
+  const income=sum(inc,a=>+a.price),costs=sum(inc,a=>+a.cost),collected=sum(inc.filter(a=>a.paid),a=>+a.price);
+  const expenses=sum(S.expenses.filter(e=>e.date>=from&&e.date<=to),e=>+e.amount);
+  const cnt=k=>A.filter(a=>a.status===k).length;
+  const sched=A.filter(a=>a.status==='scheduled');
+  return{A,inc,income,costs,collected,unpaid:income-collected,expenses,net:income-costs-expenses,
+    done:cnt('done'),noshow:cnt('noshow'),cancelled:cnt('cancelled'),scheduled:sched.length,expected:sum(sched,a=>+a.price)};
+}
+function periodRange(p){
+  const t=today(),y=t.slice(0,4),m=t.slice(0,7);
+  if(p==='week'){const f=weekStartOf(t);return{from:f,to:addDays(f,6),label:'this week'}}
+  if(p==='year')return{from:y+'-01-01',to:y+'-12-31',label:'in '+y};
+  if(p==='last'){const lm=addMonths(m,-1);return{from:lm+'-01',to:lm+'-'+pad(dim(lm)),label:'in '+monthLabel(lm)}}
+  return{from:m+'-01',to:m+'-'+pad(dim(m)),label:'this month'};
+}
+function clientStats(id){
+  const A=S.appts.filter(a=>a.clientId===id).sort(byTime);
+  const t=today(),n=nowMin();
+  const inc=A.filter(countsIncome);
+  const upcoming=A.filter(a=>a.status==='scheduled'&&(a.date>t||(a.date===t&&toMin(a.time)+(+a.duration)>=n)));
+  const past=A.filter(a=>!upcoming.includes(a)).reverse();
+  return{A,done:A.filter(a=>a.status==='done').length,noshow:A.filter(a=>a.status==='noshow').length,
+    paid:sum(inc.filter(a=>a.paid),a=>+a.price),owed:sum(inc.filter(a=>!a.paid),a=>+a.price),
+    upcoming,past,next:upcoming[0],last:A.filter(a=>a.status==='done').pop()};
+}
+function needsReview(){const t=today(),n=nowMin();return S.appts.filter(a=>a.status==='scheduled'&&(a.date<t||(a.date===t&&toMin(a.time)+(+a.duration)<=n))).sort(byTime)}
+function conflictsFor(date,time,dur,ignoreId){
+  const s=toMin(time),e=s+(+dur||0);
+  return S.appts.filter(a=>a.id!==ignoreId&&a.date===date&&a.status!=='cancelled'&&toMin(a.time)<e&&toMin(a.time)+(+a.duration)>s);
+}
+
+/* ================= routing ================= */
+const UI={period:'month',calDate:today(),calMode:'day',moneyMonth:today().slice(0,7),q:'',scrollCal:true};
+function route(){const h=decodeURIComponent(location.hash.slice(1))||'today';const i=h.indexOf('-');return i>0?{tab:h.slice(0,i),arg:h.slice(i+1)}:{tab:h,arg:''}}
+function go(h){if(location.hash==='#'+h){render();window.scrollTo(0,0)}else location.hash=h}
+window.addEventListener('hashchange',()=>{UI.histAll=false;if(route().tab==='calendar')UI.scrollCal=true;render();window.scrollTo(0,0)});
+
+/* ================= render ================= */
+function render(){
+  const r=route();
+  const tabs=[['today','home','Today'],['calendar','cal','Calendar'],['clients','users','Clients'],['money','wallet','Money'],['setup','gear','Settings']];
+  const active=r.tab==='client'?'clients':(tabs.some(t=>t[0]===r.tab)?r.tab:'today');
+  let body;
+  switch(r.tab){
+    case'calendar':body=viewCal();break;
+    case'clients':body=viewClients();break;
+    case'client':body=viewClient(r.arg);break;
+    case'money':body=viewMoney();break;
+    case'setup':body=viewSettings();break;
+    default:body=viewToday();
+  }
+  $('#app').innerHTML=`<nav class="nav" aria-label="Main">
+    <div class="brand"><span class="logo">${ic('pulse',18)}</span>PhysioDesk</div>
+    ${tabs.map(([h,i,l])=>`<a href="#${h}" class="${active===h?'on':''}">${ic(i,22)}<span>${l}</span></a>`).join('')}
+  </nav>
+  <main class="main"><div class="wrap">${body}</div></main>
+  <button class="fab" data-act="newAppt" aria-label="New appointment">${ic('plus',26)}</button>`;
+  if(r.tab==='calendar')mountCal();
+}
+
+/* ---------- appointment row ---------- */
+function apptRow(a,opts={}){
+  const c=getClient(a.clientId),s=getSvc(a.serviceId);
+  const right=opts.right||`${statusBadge(a)}${payBadge(a)}`;
+  return`<div class="row ${a.status}" role="button" tabindex="0" data-act="openAppt" data-id="${a.id}" style="--svc:${s.color}">
+    <div class="t">${opts.showDate?esc(fmtD(a.date,{day:'numeric',month:'short'})):fmtTs(a.time)}<small>${opts.showDate?fmtT(a.time):a.duration+' min'}</small></div>
+    <span class="stripe"></span>
+    <div class="info"><b>${esc(opts.noName?s.name:(c?.name||'Unknown client'))}</b><span>${opts.noName?a.duration+' min':esc(s.name)} · ${money(a.price)}${a.seriesId?' · '+ic('repeat',12).replace('class="ic"','class="ic" style="display:inline;vertical-align:-1px"'):''}</span></div>
+    <div class="end">${right}</div></div>`;
+}
+
+/* ================= TODAY / dashboard ================= */
+function viewToday(){
+  const t=today(),st=S.settings;
+  const h=new Date().getHours();
+  const greet=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+  const todays=S.appts.filter(a=>a.date===t&&a.status!=='cancelled').sort(byTime);
+  const left=todays.filter(a=>a.status==='scheduled').length;
+  const review=needsReview();
+  const P=periodRange(UI.period),ps=stats(P.from,P.to);
+  const owedAll=sum(S.appts.filter(a=>countsIncome(a)&&!a.paid),a=>+a.price);
+  const tomorrow=S.appts.filter(a=>a.date===addDays(t,1)&&a.status==='scheduled').length;
+  const hasData=S.appts.length>0;
+  const lastB=st.lastBackup;
+  const backupDue=hasData&&(!lastB||(pd(t)-pd(lastB))/864e5>=14);
+  let out=`<div class="page-head"><div>
+      <div class="eyebrow">${esc(fmtD(t,{weekday:'long',day:'numeric',month:'long'}))}</div>
+      <h1 class="h1">${greet}${st.therapist?', '+esc(st.therapist.split(' ')[0]):''}</h1>
+      <div class="muted">${todays.length?`${todays.length} session${todays.length>1?'s':''} today${left?`, ${left} still to come`:', all seen'}`:'No sessions booked today'}${tomorrow?` · ${tomorrow} tomorrow`:''}</div>
+    </div></div>`;
+  if(backupDue)out+=`<div class="banner">${ic('alert')}<div style="flex:1;min-width:0"><b>${lastB?'Last backup was '+Math.round((pd(t)-pd(lastB))/864e5)+' days ago':'Your data has no backup yet'}</b><span class="small">Everything is saved on this phone only. Send a backup file to your email or Drive in case the phone is lost.</span></div><button class="btn sm" data-act="exportBackup">Back up</button></div>`;
+  if(review.length)out+=`<section class="card"><div class="card-head"><div><h2 class="h2">How did these go?</h2><div class="muted small">${review.length} past session${review.length>1?'s':''} still marked as booked. Mark them so your income is right.</div></div>
+    ${review.length>1?`<button class="btn sm ok" data-act="reviewAllDone">${ic('check',16)} All done & paid</button>`:''}</div>
+    <div class="list">${review.slice(0,6).map(a=>apptRow(a,{showDate:a.date!==t,right:`<div class="btn-row"><button class="btn sm ok" data-act="quickDone" data-id="${a.id}" aria-label="Done">${ic('check',16)}</button><button class="btn sm bad" data-act="quickNoshow" data-id="${a.id}" aria-label="No-show">${ic('x',16)}</button></div>`})).join('')}</div>
+    ${review.length>6?`<p class="hint" style="margin-top:8px">and ${review.length-6} more. Mark these first and the rest show up here.</p>`:''}</section>`;
+  out+=`<section class="card"><div class="card-head"><h2 class="h2">Today's sessions</h2><a class="btn sm ghost" href="#calendar">${ic('cal',16)} Calendar</a></div>
+    ${todays.length?`<div class="list">${todays.map(a=>apptRow(a)).join('')}</div>`:
+    `<div class="empty"><div class="h2">A free day</div><p>Tap + to book a session.</p></div>`}</section>`;
+  out+=`<div class="page-head"><h2 class="h2">Your numbers ${esc(P.label)}</h2>
+    <div class="seg" role="tablist">${[['week','Week'],['month','Month'],['last','Last month'],['year','Year']].map(([k,l])=>`<button data-act="period" data-v="${k}" class="${UI.period===k?'on':''}">${l}</button>`).join('')}</div></div>
+  <div class="kpis">
+    <div class="kpi hero"><span class="eyebrow">Net profit</span><span class="v">${money(ps.net)}</span><span class="s">after ${money(ps.costs+ps.expenses)} costs & expenses</span></div>
+    <div class="kpi"><span class="eyebrow">Income</span><span class="v">${money(ps.income)}</span><span class="s">${money(ps.collected)} collected${ps.expected?` · ${money(ps.expected)} booked`:''}</span></div>
+    <div class="kpi"><span class="eyebrow">Sessions done</span><span class="v">${ps.done}</span><span class="s">${ps.noshow} no-show${ps.noshow===1?'':'s'} · ${ps.scheduled} still booked</span></div>
+    <div class="kpi ${owedAll?'warn':''}"><span class="eyebrow">Owed to you</span><span class="v">${money(owedAll)}</span><span class="s">${owedAll?`<a href="#money">See who owes</a>`:'Everyone has paid'}</span></div>
+  </div>`;
+  out+=`<div class="grid2"><section class="card chart"><div class="card-head"><h2 class="h2">Last 6 months</h2>
+      <div class="legend"><span><i style="background:var(--chart-a)"></i>Income</span><span><i style="background:var(--chart-b)"></i>Expenses</span><span><i style="background:var(--chart-c);border-radius:50%"></i>Profit</span></div></div>${chart6()}</section>
+    ${insights(ps,P)}</div>`;
+  if(!hasData)out+=`<section class="card"><div class="empty"><div class="h2">Start with your bookings</div><p>Add your next appointments with +, or bring them over from Google or Outlook calendar.</p>
+    <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="newAppt">${ic('plus',16)} Book a session</button><button class="btn" data-act="importIcs">${ic('down',16)} Import a calendar</button><button class="btn ghost" data-act="loadDemo">Try sample data</button></div></div></section>`;
+  return out;
+}
+function insights(ps,P){
+  const by={};ps.inc.forEach(a=>{const k=a.serviceId;by[k]=by[k]||{n:0,v:0};by[k].n++;by[k].v+=+a.price});
+  const rows=Object.entries(by).sort((a,b)=>b[1].v-a[1].v);
+  const max=Math.max(1,...rows.map(r=>r[1].v));
+  const seen=ps.done+ps.noshow;
+  const nsr=seen?Math.round(ps.noshow/seen*100):0;
+  const avg=ps.done?ps.income/ps.inc.length:0;
+  const newC=S.clients.filter(c=>{const f=S.appts.filter(a=>a.clientId===c.id&&a.status!=='cancelled').sort(byTime)[0];return f&&f.date>=P.from&&f.date<=P.to}).length;
+  const wd={};ps.A.filter(a=>a.status==='done').forEach(a=>{const k=pd(a.date).getDay();wd[k]=(wd[k]||0)+1});
+  const busy=Object.entries(wd).sort((a,b)=>b[1]-a[1])[0];
+  const names=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return`<section class="card"><div class="card-head"><h2 class="h2">Where it comes from</h2></div>
+    ${rows.length?`<div class="bars">${rows.map(([id,v])=>{const s=getSvc(id);return`<div class="bar-row" style="--svc:${s.color}"><span>${esc(s.name)} <span class="muted">· ${v.n}</span></span><b class="num">${money(v.v)}</b><div class="track"><i style="width:${(v.v/max*100).toFixed(1)}%"></i></div></div>`}).join('')}</div>`:`<p class="muted">Income by service shows here once sessions are marked done.</p>`}
+    <div class="sep" style="margin:16px 0"></div>
+    <div class="facts">
+      <div><b>${money(avg)}</b><span>average per session</span></div>
+      <div><b>${nsr}%</b><span>no-show rate</span></div>
+      <div><b>${newC}</b><span>new client${newC===1?'':'s'}</span></div>
+      <div><b>${busy?names[busy[0]]:'–'}</b><span>busiest day</span></div>
+    </div></section>`;
+}
+function chart6(){
+  const m0=today().slice(0,7);
+  const months=[];for(let i=5;i>=0;i--)months.push(addMonths(m0,-i));
+  const data=months.map(m=>{const s=stats(m+'-01',m+'-'+pad(dim(m)));return{m,inc:s.income,exp:s.expenses+s.costs,net:s.net}});
+  const W=600,H=230,L=46,R=10,T=14,B=34,iw=W-L-R,ih=H-T-B;
+  const hi=Math.max(10,...data.map(d=>Math.max(d.inc,d.exp)));
+  const lo=Math.min(0,...data.map(d=>d.net));
+  const step=niceStep((hi-lo)/4);const top=Math.ceil(hi/step)*step,bot=Math.floor(lo/step)*step;
+  const y=v=>T+ih-(v-bot)/(top-bot)*ih;
+  const gw=iw/6,bw=Math.min(26,gw*.3);
+  let g='';
+  for(let v=bot;v<=top+1e-9;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1" ${v===0?'':'stroke-dasharray="3 4"'}/><text x="${L-8}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${esc(moneyShort(v))}</text>`;
+  const pts=[];
+  data.forEach((d,i)=>{
+    const cx=L+gw*i+gw/2;
+    g+=`<rect x="${(cx-bw-2).toFixed(1)}" y="${y(Math.max(0,d.inc)).toFixed(1)}" width="${bw}" height="${Math.max(0,y(0)-y(d.inc)).toFixed(1)}" rx="4" fill="var(--chart-a)"><title>${monthLabel(d.m)} income ${money(d.inc)}</title></rect>`;
+    g+=`<rect x="${(cx+2).toFixed(1)}" y="${y(Math.max(0,d.exp)).toFixed(1)}" width="${bw}" height="${Math.max(0,y(0)-y(d.exp)).toFixed(1)}" rx="4" fill="var(--chart-b)"><title>${monthLabel(d.m)} costs & expenses ${money(d.exp)}</title></rect>`;
+    g+=`<text x="${cx.toFixed(1)}" y="${H-12}" text-anchor="middle" font-size="12" font-weight="${i===5?700:500}" fill="${i===5?'var(--text)':'var(--muted)'}">${pd(d.m+'-01').toLocaleDateString('en-GB',{month:'short'})}</text>`;
+    pts.push([cx,y(d.net)]);
+  });
+  g+=`<polyline points="${pts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="var(--chart-c)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  pts.forEach((p,i)=>g+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i===5?5:3.5}" fill="var(--chart-c)" stroke="var(--surface)" stroke-width="2"><title>${monthLabel(data[i].m)} profit ${money(data[i].net)}</title></circle>`);
+  const last=data[5];
+  g+=`<text x="${Math.min(W-R-4,pts[5][0]+8)}" y="${Math.max(T+10,pts[5][1]-10)}" text-anchor="end" font-size="12" font-weight="700" fill="var(--chart-c)">${esc(moneyShort(last.net))}</text>`;
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Income, expenses and profit for the last six months">${g}</svg>`;
+}
+function niceStep(x){if(x<=0)return 10;const p=Math.pow(10,Math.floor(Math.log10(x)));const f=x/p;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+
+/* ================= CALENDAR ================= */
+function viewCal(){
+  const d=UI.calDate,mode=UI.calMode;
+  let ttl,sub='';
+  if(mode==='month'){ttl=monthLabel(d.slice(0,7))}
+  else if(mode==='agenda'){ttl='Coming up';sub='Next 30 days from '+fmtD(d,{day:'numeric',month:'short'})}
+  else{ttl=relDay(d);sub=fmtD(d,{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+  let out=`<div class="cal-head">
+    <button class="btn icon" data-act="calStep" data-v="-1" aria-label="Previous">${ic('left')}</button>
+    <div class="ttl">${esc(ttl)}<small>${esc(sub)}</small></div>
+    <button class="btn icon" data-act="calStep" data-v="1" aria-label="Next">${ic('right')}</button>
+    <button class="btn sm" data-act="calToday">Today</button></div>
+    <div><div class="seg">${[['day','Day'],['month','Month'],['agenda','List']].map(([k,l])=>`<button data-act="calMode" data-v="${k}" class="${mode===k?'on':''}">${l}</button>`).join('')}</div></div>`;
+  if(mode==='month')out+=`<section class="card swipe">${monthGrid(d)}</section>`;
+  else if(mode==='agenda')out+=`<section class="card">${agenda(d)}</section>`;
+  else out+=`<section class="card swipe" style="display:flex;flex-direction:column;gap:14px">${weekStrip(d)}${daySummary(d)}${dayTimeline(d)}</section>`;
+  return out;
+}
+function weekStrip(d){
+  const f=weekStartOf(d),t=today();let h='<div class="strip">';
+  for(let i=0;i<7;i++){const x=addDays(f,i);const n=S.appts.filter(a=>a.date===x&&a.status!=='cancelled').length;
+    h+=`<button data-act="calPick" data-v="${x}" class="${x===d?'on':''} ${x===t?'today':''}"><span class="wd">${pd(x).toLocaleDateString('en-GB',{weekday:'narrow'})}</span><span class="dn">${pd(x).getDate()}</span><span class="dots">${'<i></i>'.repeat(Math.min(n,4))}</span></button>`}
+  return h+'</div>';
+}
+function daySummary(d){
+  const A=S.appts.filter(a=>a.date===d&&a.status!=='cancelled');
+  if(!A.length)return`<div class="day-sum">Nothing booked. Tap a time below to add a session.</div>`;
+  const inc=sum(A.filter(a=>a.status!=='noshow'||a.paid),a=>+a.price);
+  const mins=sum(A,a=>+a.duration);
+  return`<div class="day-sum"><span><b>${A.length}</b> session${A.length>1?'s':''}</span><span><b>${Math.floor(mins/60)}h${mins%60?' '+mins%60+'m':''}</b> of treatment</span><span><b>${money(inc)}</b> for the day</span><span><b>${A.filter(a=>a.status==='done').length}</b> done</span></div>`;
+}
+const HH=68;
+function dayTimeline(d){
+  const A=S.appts.filter(a=>a.date===d).sort(byTime);
+  let h0=+S.settings.startHour,h1=+S.settings.endHour;
+  A.forEach(a=>{h0=Math.min(h0,Math.floor(toMin(a.time)/60));h1=Math.max(h1,Math.ceil((toMin(a.time)+(+a.duration||30))/60))});
+  h1=Math.min(24,Math.max(h1,h0+1));
+  const items=A.map(a=>({a,s:toMin(a.time),e:toMin(a.time)+Math.max(15,+a.duration||30)}));
+  const clusters=[];let cur=[],end=-1;
+  for(const it of items){if(cur.length&&it.s>=end){clusters.push(cur);cur=[];end=-1}cur.push(it);end=Math.max(end,it.e)}
+  if(cur.length)clusters.push(cur);
+  for(const cl of clusters){const cols=[];for(const it of cl){let c=cols.findIndex(e=>e<=it.s);if(c<0){c=cols.length;cols.push(0)}cols[c]=it.e;it.col=c}cl.forEach(it=>it.n=cols.length)}
+  let g=`<div class="tl" data-act="tlNew" data-h0="${h0}" style="height:${(h1-h0)*HH}px">`;
+  for(let h=h0;h<h1;h++)g+=`<div class="hr" style="height:${HH}px"><span>${S.settings.clock==='24'?pad(h)+':00':(h%12||12)+(h<12?' am':' pm')}</span></div><div class="half" style="top:${(h-h0)*HH+HH/2}px"></div>`;
+  for(const it of items){
+    const a=it.a,c=getClient(a.clientId),s=getSvc(a.serviceId);
+    const top=(it.s-h0*60)*HH/60,ht=Math.max(26,(it.e-it.s)*HH/60-3);
+    const w=`calc((100% - 58px) / ${it.n} - 3px)`,l=`calc(58px + (100% - 58px) * ${it.col} / ${it.n})`;
+    g+=`<button class="blk ${a.status}" data-act="openAppt" data-id="${a.id}" style="--svc:${s.color};top:${top}px;height:${ht}px;left:${l};width:${w}">
+      ${a.status==='done'?`<span class="ck">${ic('check',14)}</span>`:''}<b>${esc(c?.name||'Client')}</b><span>${fmtTs(a.time)}–${fmtT(fromMin(it.s+(+a.duration)))}${ht>44?'':' · '+esc(s.name)}</span>${ht>44?`<span>${esc(s.name)} · ${money(a.price)}</span>`:''}</button>`;
+  }
+  if(d===today()){const n=nowMin();if(n>=h0*60&&n<=h1*60)g+=`<div class="now" style="top:${(n-h0*60)*HH/60}px"></div>`}
+  return g+'</div>';
+}
+function mountCal(){
+  const sw=$('.swipe');
+  if(sw){let x0=null,y0=0;
+    sw.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+    sw.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;
+      if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.6)calStep(dx<0?1:-1)},{passive:true});}
+  if(UI.scrollCal&&UI.calMode==='day'){UI.scrollCal=false;
+    const tl=$('.tl');if(!tl)return;
+    const h0=+tl.dataset.h0;const first=S.appts.filter(a=>a.date===UI.calDate).sort(byTime)[0];
+    let m=UI.calDate===today()?nowMin()-60:first?toMin(first.time)-30:S.settings.startHour*60;
+    const y=tl.getBoundingClientRect().top+window.scrollY+Math.max(0,(m-h0*60)*HH/60)-120;
+    if(y>200)window.scrollTo(0,y);
+  }
+}
+function monthGrid(d){
+  const ym=d.slice(0,7),first=ym+'-01',t=today();
+  const start=weekStartOf(first);
+  let g='<div class="month">';
+  for(let i=0;i<7;i++)g+=`<div class="wd">${pd(addDays(start,i)).toLocaleDateString('en-GB',{weekday:'short'}).slice(0,2)}</div>`;
+  const cells=Math.ceil(((pd(first).getDay()-S.settings.weekStart+7)%7+dim(ym))/7)*7;
+  for(let i=0;i<cells;i++){const x=addDays(start,i);
+    const A=S.appts.filter(a=>a.date===x&&a.status!=='cancelled');
+    const v=sum(A.filter(countsIncome),a=>+a.price)||sum(A.filter(a=>a.status==='scheduled'),a=>+a.price);
+    g+=`<button data-act="calPick" data-v="${x}" class="${x.slice(0,7)!==ym?'out':''} ${x===t?'today':''}"><span class="d">${pd(x).getDate()}</span>${A.length?`<span class="c">${A.length}</span><span class="m">${esc(moneyShort(v))}</span>`:''}</button>`}
+  const ms=stats(first,ym+'-'+pad(dim(ym)));
+  return g+`</div><div class="day-sum" style="margin-top:12px"><span><b>${ms.done}</b> done</span><span><b>${ms.scheduled}</b> booked</span><span><b>${money(ms.income)}</b> earned</span>${ms.expected?`<span><b>${money(ms.expected)}</b> still to come</span>`:''}</div>`;
+}
+function agenda(d){
+  const to=addDays(d,30);
+  const A=S.appts.filter(a=>a.date>=d&&a.date<=to&&a.status!=='cancelled').sort(byTime);
+  if(!A.length)return`<div class="empty"><div class="h2">Nothing booked</div><p>No sessions in the next 30 days.</p></div>`;
+  let h='<div class="list">',last='';
+  for(const a of A){if(a.date!==last){h+=`<div class="date-sep">${esc(relDay(a.date)===fmtD(a.date)?fmtD(a.date,{weekday:'long',day:'numeric',month:'short'}):relDay(a.date)+' · '+fmtD(a.date,{day:'numeric',month:'short'}))}</div>`;last=a.date}h+=apptRow(a)}
+  return h+'</div>';
+}
+function calStep(n){
+  const m=UI.calMode;
+  if(m==='month')UI.calDate=addMonths(UI.calDate.slice(0,7),n)+'-01';
+  else if(m==='agenda')UI.calDate=addDays(UI.calDate,30*n);
+  else UI.calDate=addDays(UI.calDate,n);
+  UI.scrollCal=true;render();
+}
+
+/* ================= CLIENTS ================= */
+function viewClients(){
+  return`<div class="page-head"><div><h1 class="h1">Clients</h1><div class="muted">${S.clients.length} on file</div></div>
+    <button class="btn primary" data-act="newClient">${ic('plus',16)} New client</button></div>
+    <div class="search fld">${ic('search',18)}<input id="client-q" type="search" placeholder="Search by name, phone or condition" value="${esc(UI.q)}" data-input="clientSearch" autocomplete="off"></div>
+    <section class="card" style="padding-block:6px"><div class="list" id="client-list">${clientList()}</div></section>`;
+}
+function clientList(){
+  const q=UI.q.trim().toLowerCase();
+  const L=S.clients.filter(c=>!q||[c.name,c.phone,c.condition,c.email].some(v=>String(v||'').toLowerCase().includes(q)))
+    .map(c=>({c,st:clientStats(c.id)}))
+    .sort((a,b)=>{const an=a.st.next?.date||'9',bn=b.st.next?.date||'9';return an===bn?a.c.name.localeCompare(b.c.name):an.localeCompare(bn)});
+  if(!L.length)return`<div class="empty">${S.clients.length?'No client matches that search.':'<div class="h2">No clients yet</div><p>They are added when you book their first session, or tap New client.</p>'}</div>`;
+  return L.map(({c,st})=>`<a class="row" href="#client-${c.id}">${avatar(c)}
+    <div class="info"><b>${esc(c.name)}</b><span>${esc([c.condition,st.next?'Next '+relDay(st.next.date)+' '+fmtT(st.next.time):st.last?'Last seen '+fmtD(st.last.date,{day:'numeric',month:'short'}):''].filter(Boolean).join(' · ')||c.phone||'')}</span></div>
+    <div class="end">${st.owed?`<span class="badge b-unpaid">Owes ${money(st.owed)}</span>`:''}<span class="muted small">${st.done} session${st.done===1?'':'s'}</span></div></a>`).join('');
+}
+function viewClient(id){
+  const c=getClient(id);
+  if(!c)return`<a class="back" href="#clients">${ic('left',16)} Clients</a><div class="empty"><div class="h2">This client was removed</div></div>`;
+  const st=clientStats(id);
+  const notes=S.notes.filter(n=>n.clientId===id).sort((a,b)=>(b.date+(b.at||'')).localeCompare(a.date+(a.at||'')));
+  const pains=notes.filter(n=>n.pain!==''&&n.pain!=null).slice().reverse();
+  const since=st.A.find(a=>a.status!=='cancelled')?.date||c.createdAt;
+  const details=[['Phone',c.phone],['Email',c.email],['Date of birth',c.dob?fmtD(c.dob,{day:'numeric',month:'long',year:'numeric'})+(age(c.dob)!==''?` (${age(c.dob)})`:''):''],['Gender',c.gender],['Address',c.address],['Referred by',c.referral],['Medical notes',c.notes]].filter(x=>x[1]);
+  return`<a class="back" href="#clients">${ic('left',16)} Clients</a>
+  <section class="card" style="display:flex;flex-direction:column;gap:14px">
+    <div class="client-top">${avatar(c,'lg')}<div><h1 class="h1" style="font-size:24px">${esc(c.name)}</h1><div class="muted">${esc(c.condition||'No condition noted')}</div></div></div>
+    <div class="btn-row">
+      ${c.phone?`<a class="btn soft" href="${telHref(c.phone)}" data-ext>${ic('phone',16)} Call</a><a class="btn soft" href="${waHref(c.phone,'')}" data-ext target="_blank" rel="noopener">${ic('chat',16)} WhatsApp</a>`:''}
+      <button class="btn primary" data-act="newAppt" data-client="${c.id}">${ic('plus',16)} Book</button>
+      <button class="btn" data-act="editClient" data-id="${c.id}">${ic('edit',16)} Edit</button></div>
+    <div class="stat4"><div><b>${st.done}</b><span>sessions</span></div><div><b>${money(st.paid)}</b><span>paid</span></div>
+      <div><b style="${st.owed?'color:var(--warn)':''}">${money(st.owed)}</b><span>owes</span></div><div><b>${since?esc(fmtD(since,{month:'short',year:'2-digit'})):'–'}</b><span>client since</span></div></div>
+    ${st.owed?`<button class="btn ok block" data-act="payAllClient" data-id="${c.id}">${ic('check',16)} Mark ${money(st.owed)} as paid</button>`:''}
+  </section>
+  <div class="grid2">
+  <section class="card"><div class="card-head"><h2 class="h2">Coming up</h2></div>
+    ${st.upcoming.length?`<div class="list">${st.upcoming.map(a=>apptRow(a,{showDate:true,noName:true})).join('')}</div>`:`<p class="muted" style="margin:0">No sessions booked.</p>`}</section>
+  <section class="card"><div class="card-head"><h2 class="h2">Treatment notes</h2><button class="btn sm soft" data-act="newNote" data-client="${c.id}">${ic('plus',14)} Add note</button></div>
+    ${pains.length>=2?painSpark(pains):''}
+    ${notes.length?`<div>${notes.map(n=>`<div class="note"><div class="meta"><span>${esc(fmtD(n.date,{weekday:'short',day:'numeric',month:'short',year:'numeric'}))}</span><span class="btn-row" style="gap:6px">${n.pain!==''&&n.pain!=null?`<span class="painchip">Pain ${n.pain}/10</span>`:''}<button class="btn sm ghost icon" data-act="editNote" data-id="${n.id}" aria-label="Edit note">${ic('edit',15)}</button></span></div><p>${esc(n.text)}</p></div>`).join('')}</div>`:`<p class="muted" style="margin:0">Write what you assessed and treated after each session, with the 0–10 pain score, to follow progress.</p>`}</section>
+  </div>
+  <section class="card"><div class="card-head"><h2 class="h2">History</h2><span class="muted small">${st.noshow?st.noshow+' no-show'+(st.noshow>1?'s':''):''}</span></div>
+    ${st.past.length?`<div class="list">${st.past.slice(0,UI.histAll?1e9:8).map(a=>apptRow(a,{showDate:true,noName:true})).join('')}</div>${st.past.length>8&&!UI.histAll?`<button class="btn sm ghost block" data-act="histAll" style="margin-top:6px">Show all ${st.past.length} sessions</button>`:''}`:`<p class="muted" style="margin:0">No past sessions.</p>`}</section>
+  <section class="card"><div class="card-head"><h2 class="h2">Details</h2></div>
+    ${details.length?`<dl class="kv">${details.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:`<p class="muted" style="margin:0">Add a phone number, date of birth and medical notes with Edit.</p>`}
+    <div class="btn-row" style="margin-top:14px"><button class="btn sm bad" data-act="deleteClient" data-id="${c.id}">${ic('trash',15)} Delete client</button></div></section>`;
+}
+function painSpark(p){
+  const W=320,H=70,L=6,R=30,T=10,B=16;const n=p.length;
+  const x=i=>L+(W-L-R)*(n===1?0:i/(n-1)),y=v=>T+(H-T-B)*(1-v/10);
+  const pts=p.map((q,i)=>[x(i),y(+q.pain)]);
+  const first=+p[0].pain,last=+p[n-1].pain;
+  return`<div style="margin-bottom:6px"><div class="muted small">Pain score over ${n} notes: <b style="color:var(--text)">${first} → ${last}</b>${last<first?' (improving)':last>first?' (worse)':''}</div>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Pain score trend">
+  <line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/><line x1="${L}" x2="${W-R}" y1="${y(10)}" y2="${y(10)}" stroke="var(--line)" stroke-dasharray="3 4"/>
+  <text x="${W-R+6}" y="${y(10)+4}" font-size="10" fill="var(--muted)">10</text><text x="${W-R+6}" y="${y(0)+4}" font-size="10" fill="var(--muted)">0</text>
+  <polyline points="${pts.map(q=>q.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>
+  ${pts.map((q,i)=>`<circle cx="${q[0]}" cy="${q[1]}" r="${i===n-1?4.5:3}" fill="var(--accent)"/>`).join('')}</svg></div>`;
+}
+
+/* ================= MONEY ================= */
+function viewMoney(){
+  const m=UI.moneyMonth,from=m+'-01',to=m+'-'+pad(dim(m));
+  const st=stats(from,to);
+  const meth={};st.inc.filter(a=>a.paid).forEach(a=>{const k=a.method||'Cash';meth[k]=(meth[k]||0)+(+a.price)});
+  const mrows=Object.entries(meth).sort((a,b)=>b[1]-a[1]);const mmax=Math.max(1,...mrows.map(r=>r[1]));
+  const unpaid=S.appts.filter(a=>countsIncome(a)&&!a.paid).sort(byTime).reverse();
+  const exps=S.expenses.filter(e=>e.date>=from&&e.date<=to).sort((a,b)=>b.date.localeCompare(a.date));
+  const cats={};exps.forEach(e=>cats[e.category]=(cats[e.category]||0)+(+e.amount));
+  const sessions=st.inc.slice().sort(byTime).reverse();
+  return`<div class="page-head"><div><h1 class="h1">Money</h1><div class="muted">Income, expenses and who still owes you</div></div>
+    <button class="btn" data-act="exportCsv">${ic('down',16)} Spreadsheet</button></div>
+  <div class="cal-head"><button class="btn icon" data-act="monthStep" data-v="-1" aria-label="Previous month">${ic('left')}</button>
+    <div class="ttl">${esc(monthLabel(m))}</div><button class="btn icon" data-act="monthStep" data-v="1" aria-label="Next month">${ic('right')}</button></div>
+  <div class="grid2">
+  <section class="card"><div class="card-head"><h2 class="h2">Profit & loss</h2><span class="muted small">${st.inc.length} paid-for session${st.inc.length===1?'':'s'}</span></div>
+    <div class="ledger">
+      <div class="l"><span>Session income</span><b>${money(st.income)}</b></div>
+      <div class="l"><span class="muted">− Session costs</span><span>${money(st.costs)}</span></div>
+      <div class="l"><span class="muted">− Expenses</span><span>${money(st.expenses)}</span></div>
+      <div class="l total"><span>Net profit</span><span style="color:${st.net<0?'var(--bad)':'var(--ok)'}">${money(st.net)}</span></div>
+      <div class="l"><span class="muted">Collected</span><span>${money(st.collected)}</span></div>
+      <div class="l"><span class="muted">Not paid yet</span><span style="${st.unpaid?'color:var(--warn);font-weight:700':''}">${money(st.unpaid)}</span></div>
+      ${st.expected?`<div class="l"><span class="muted">Still booked this month</span><span>${money(st.expected)}</span></div>`:''}
+    </div></section>
+  <section class="card"><div class="card-head"><h2 class="h2">How you were paid</h2></div>
+    ${mrows.length?`<div class="bars">${mrows.map(([k,v])=>`<div class="bar-row"><span>${esc(k)}</span><b class="num">${money(v)}</b><div class="track"><i style="width:${(v/mmax*100).toFixed(1)}%"></i></div></div>`).join('')}</div>`:`<p class="muted" style="margin:0">No payments recorded this month.</p>`}
+    ${Object.keys(cats).length?`<div class="sep" style="margin:16px 0"></div><div class="eyebrow" style="margin-bottom:8px">Expenses by type</div><div class="bars">${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar-row" style="--svc:var(--chart-b)"><span>${esc(k)}</span><b class="num">${money(v)}</b><div class="track"><i style="width:${(v/Math.max(...Object.values(cats))*100).toFixed(1)}%"></i></div></div>`).join('')}</div>`:''}
+  </section></div>
+  <section class="card"><div class="card-head"><div><h2 class="h2">Owed to you</h2><div class="muted small">All months · ${money(sum(unpaid,a=>+a.price))} in total</div></div></div>
+    ${unpaid.length?`<div class="list">${unpaid.slice(0,40).map(a=>apptRow(a,{showDate:true,right:`<button class="btn sm ok" data-act="quickPaid" data-id="${a.id}">${ic('check',14)} Paid</button>`})).join('')}</div>`:`<p class="muted" style="margin:0">Nobody owes you anything.</p>`}</section>
+  <section class="card"><div class="card-head"><h2 class="h2">Expenses</h2><button class="btn sm soft" data-act="newExpense">${ic('plus',14)} Add expense</button></div>
+    ${exps.length?`<div class="list">${exps.map(e=>`<button class="row" data-act="editExpense" data-id="${e.id}"><div class="t">${esc(fmtD(e.date,{day:'numeric',month:'short'}))}</div><div class="info"><b>${esc(e.category)}</b><span>${esc(e.note||'')}</span></div><div class="end"><span class="amt neg">−${money(e.amount)}</span></div></button>`).join('')}</div>`:`<p class="muted" style="margin:0">Add rent, equipment and supplies so your profit is real.</p>`}</section>
+  <section class="card"><div class="card-head"><h2 class="h2">Sessions this month</h2><span class="muted small">profit per session after its own cost</span></div>
+    ${sessions.length?`<div class="list">${sessions.map(a=>apptRow(a,{showDate:true,right:`<span class="amt">${money((+a.price)-(+a.cost||0))}</span>${payBadge(a)}`})).join('')}</div>`:`<p class="muted" style="margin:0">No completed sessions this month.</p>`}</section>`;
+}
+
+/* ================= SETTINGS ================= */
+function viewSettings(){
+  const s=S.settings;
+  const fld=(k,label,type='text',extra='')=>`<label class="fld"><span>${label}</span><input id="set-${k}" type="${type}" value="${esc(s[k])}" data-change="setting" data-k="${k}" ${extra}></label>`;
+  const hours=Array.from({length:24},(_,h)=>h);
+  return`<div class="page-head"><div><h1 class="h1">Settings</h1><div class="muted">Changes save straight away</div></div></div>
+  <div class="grid2">
+  <section class="card set-list"><h2 class="h2">Your clinic</h2>
+    ${fld('clinic','Clinic name','text','placeholder="e.g. Move Well Physio"')}
+    ${fld('therapist','Your name','text','placeholder="e.g. Dr. Karim"')}
+    <div class="r2">${fld('currency','Currency','text','maxlength="4"')}${fld('cc','WhatsApp country code','text','inputmode="numeric" maxlength="4"')}</div>
+    <p class="hint">Numbers saved like 03 123 456 get this code added for WhatsApp (961 is Lebanon).</p></section>
+  <section class="card set-list"><h2 class="h2">Calendar</h2>
+    <div class="r2"><label class="fld"><span>Day starts</span><select id="set-startHour" data-change="setting" data-k="startHour" data-num>${hours.map(h=>`<option value="${h}" ${+s.startHour===h?'selected':''}>${fmtT(pad(h)+':00')}</option>`).join('')}</select></label>
+    <label class="fld"><span>Day ends</span><select id="set-endHour" data-change="setting" data-k="endHour" data-num>${hours.slice(1).concat(24).map(h=>`<option value="${h}" ${+s.endHour===h?'selected':''}>${h===24?'Midnight':fmtT(pad(h)+':00')}</option>`).join('')}</select></label></div>
+    <div class="r2"><label class="fld"><span>Week starts on</span><select id="set-weekStart" data-change="setting" data-k="weekStart" data-num><option value="1" ${s.weekStart==1?'selected':''}>Monday</option><option value="0" ${s.weekStart==0?'selected':''}>Sunday</option><option value="6" ${s.weekStart==6?'selected':''}>Saturday</option></select></label>
+    <label class="fld"><span>Clock</span><select id="set-clock" data-change="setting" data-k="clock"><option value="12" ${s.clock==='12'?'selected':''}>2:30 pm</option><option value="24" ${s.clock==='24'?'selected':''}>14:30</option></select></label></div></section>
+  </div>
+  <section class="card"><div class="card-head"><div><h2 class="h2">Services & prices</h2><div class="muted small">Picking a service fills in its price and length</div></div><button class="btn sm soft" data-act="newService">${ic('plus',14)} Add</button></div>
+    <div>${S.services.map(v=>`<div class="svc-row" style="--svc:${v.color}"><span class="dot"></span><div class="info"><b>${esc(v.name)}</b><div class="muted small">${v.duration} min</div></div><b class="num">${money(v.price)}</b><button class="btn sm ghost icon" data-act="editService" data-id="${v.id}" aria-label="Edit ${esc(v.name)}">${ic('edit',16)}</button></div>`).join('')}</div></section>
+  <div class="grid2">
+  <section class="card set-list"><h2 class="h2">WhatsApp reminder</h2>
+    <label class="fld"><span>Message</span><textarea id="set-reminder" rows="4" data-change="setting" data-k="reminder">${esc(s.reminder)}</textarea></label>
+    <p class="hint">{name}, {day}, {time} and {clinic} are filled in for each client. Send it from the appointment with "Remind".</p></section>
+  <section class="card set-list"><h2 class="h2">Privacy & look</h2>
+    <div class="svc-row" style="border:0;padding:0"><span class="info"><b>PIN lock</b><div class="muted small">${s.pinHash?'On: the app asks for your PIN when opened':'Off: anyone holding the phone can open client files'}</div></span>
+      ${s.pinHash?`<button class="btn sm" data-act="removePin">Turn off</button>`:`<button class="btn sm primary" data-act="setPin">${ic('lock',14)} Set PIN</button>`}</div>
+    <label class="fld"><span>Theme</span><select id="set-theme" data-change="setting" data-k="theme"><option value="auto" ${s.theme==='auto'?'selected':''}>Same as phone</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option></select></label></section>
+  </div>
+  <section class="card set-list"><div><h2 class="h2">Backup & import</h2><div class="muted small">${s.lastBackup?'Last backup '+esc(fmtD(s.lastBackup,{day:'numeric',month:'long',year:'numeric'})):'No backup yet'}. Your data is stored on this phone only.</div></div>
+    <div class="btn-row">
+      <button class="btn primary" data-act="exportBackup">${ic('up',16)} Back up now</button>
+      <button class="btn" data-act="restoreBackup">${ic('down',16)} Restore a backup</button>
+      <button class="btn" data-act="importIcs">${ic('cal',16)} Import Google / Outlook calendar</button>
+      <button class="btn" data-act="exportCsv">${ic('down',16)} Export spreadsheet</button></div>
+    <p class="hint">Back up sends a file you can save to Google Drive, email to yourself or keep in WhatsApp. Restore it on a new phone to get everything back.</p></section>
+  <section class="card set-list"><h2 class="h2">Sample data</h2>
+    <p class="hint">${S.appts.some(a=>a.demo)?'The app holds sample clients and sessions. Remove them before you start for real; your own entries stay.':'Load made-up clients and sessions to see how the app works.'}</p>
+    <div class="btn-row">${S.appts.some(a=>a.demo)?`<button class="btn" data-act="clearDemo">Remove sample data</button>`:`<button class="btn" data-act="loadDemo">Load sample data</button>`}
+    <button class="btn bad" data-act="eraseAll">${ic('trash',15)} Erase everything</button></div></section>
+  <p class="hint" style="text-align:center">PhysioDesk · works offline · ${S.clients.length} clients · ${S.appts.length} sessions</p>`;
+}
+
+/* ================= modals ================= */
+const useHistory=(()=>{try{return window.top===window}catch(e){return false}})();
+const stack=[];let ignorePops=0;
+function openModal(html,mount){
+  const el=document.createElement('div');el.className='modal';
+  el.innerHTML=`<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div class="sheet-body">${html}</div></div>`;
+  $('#modal-root').appendChild(el);const entry={el,after:null};stack.push(entry);document.body.classList.add('noscroll');
+  if(useHistory)history.pushState({m:stack.length},'');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('in')));
+  mount&&mount(el);return el;
+}
+function replaceModal(html,mount){const t=stack[stack.length-1];if(!t)return openModal(html,mount);const b=t.el.querySelector('.sheet-body');b.innerHTML=html;t.el.querySelector('.sheet').scrollTop=0;mount&&mount(t.el);return t.el}
+function finalize(){const t=stack.pop();if(!t)return;clearTimeout(t.timer);t.el.classList.remove('in');setTimeout(()=>t.el.remove(),200);if(!stack.length)document.body.classList.remove('noscroll');t.after&&t.after()}
+function closeModal(after){const t=stack[stack.length-1];if(!t){after&&after();return}t.after=after||null;
+  if(useHistory){history.back();t.timer=setTimeout(()=>{if(stack[stack.length-1]===t){ignorePops++;finalize()}},450)}else finalize()}
+window.addEventListener('popstate',()=>{if(ignorePops>0){ignorePops--;return}if(stack.length)finalize()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&stack.length)closeModal()});
+function ask(title,text,buttons){
+  const html=`<div class="form"><h2 class="h2">${esc(title)}</h2>${text?`<p class="muted" style="margin:0">${text}</p>`:''}
+    <div class="sheet-actions" style="flex-wrap:wrap"><button class="btn ghost" data-act="close">Cancel</button>${buttons.map((b,i)=>`<button class="btn ${b.cls||'primary'}" data-act="askBtn" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+  ASK=buttons;
+  if(stack.length)replaceModal(html);else openModal(html);
+}
+let ASK=[];
+
+/* ---------- appointment detail ---------- */
+function apptDetail(a){
+  const c=getClient(a.clientId),s=getSvc(a.serviceId);
+  const end=fromMin(toMin(a.time)+(+a.duration));
+  const profit=(+a.price)-(+a.cost||0);
+  const seriesN=a.seriesId?S.appts.filter(x=>x.seriesId===a.seriesId).sort(byTime):[];
+  return`<div class="form">
+  <div class="detail-top" style="--svc:${s.color}"><span class="stripe"></span><div style="flex:1;min-width:0">
+    <div class="eyebrow">${esc(s.name)}</div>
+    <h2 class="h1" style="font-size:23px"><a href="#client-${c?.id}" data-act="toClient" data-id="${c?.id||''}" style="color:inherit;text-decoration:none">${esc(c?.name||'Unknown client')}</a></h2>
+    <div class="muted">${esc(fmtD(a.date,{weekday:'long',day:'numeric',month:'long'}))} · ${fmtT(a.time)}–${fmtT(end)}</div>
+    <div class="btn-row" style="margin-top:8px">${statusBadge(a)}${payBadge(a)}${a.seriesId?`<span class="badge b-cancel">${ic('repeat',12)} ${seriesN.indexOf(a)+1} of ${seriesN.length}</span>`:''}</div></div>
+    <button class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  ${a.status==='scheduled'?`<div class="r2"><button class="btn ok" data-act="apptStatus" data-id="${a.id}" data-v="done" data-paid="1">${ic('check',16)} Done & paid</button><button class="btn soft" data-act="apptStatus" data-id="${a.id}" data-v="done">Done, pay later</button></div>
+   <div class="r2"><button class="btn bad" data-act="apptStatus" data-id="${a.id}" data-v="noshow">No-show</button><button class="btn" data-act="apptStatus" data-id="${a.id}" data-v="cancelled">Cancelled</button></div>`
+   :`<div class="btn-row"><button class="btn sm" data-act="apptStatus" data-id="${a.id}" data-v="scheduled">Back to booked</button>${countsIncome(a)?`<button class="btn sm ${a.paid?'':'ok'}" data-act="apptPaid" data-id="${a.id}">${a.paid?'Mark as unpaid':ic('check',14)+' Mark as paid'}</button>`:a.status==='noshow'?`<button class="btn sm" data-act="apptPaid" data-id="${a.id}">Charged a no-show fee</button>`:''}</div>`}
+  ${countsIncome(a)&&a.paid?`<div><div class="eyebrow" style="margin-bottom:6px">Paid by</div><div class="chips">${METHODS.map(m=>`<button data-act="apptMethod" data-id="${a.id}" data-v="${m}" class="${(a.method||'Cash')===m?'on':''}">${m}</button>`).join('')}</div></div>`:''}
+  <dl class="kv"><dt>Price</dt><dd>${money(a.price)}</dd>${+a.cost?`<dt>Session cost</dt><dd>${money(a.cost)}</dd>`:''}<dt>Profit</dt><dd>${money(profit)}</dd><dt>Length</dt><dd>${a.duration} min</dd>${c?.phone?`<dt>Phone</dt><dd>${esc(c.phone)}</dd>`:''}${a.notes?`<dt>Notes</dt><dd style="font-weight:500;white-space:pre-wrap">${esc(a.notes)}</dd>`:''}</dl>
+  <div class="btn-row">
+    ${c?.phone?`<a class="btn soft" href="${waHref(c.phone,reminderText(a))}" data-ext target="_blank" rel="noopener">${ic('chat',16)} Remind</a><a class="btn soft" href="${telHref(c.phone)}" data-ext>${ic('phone',16)} Call</a>`:''}
+    <button class="btn soft" data-act="newNote" data-client="${a.clientId}" data-appt="${a.id}">${ic('note',16)} Note</button>
+    <button class="btn" data-act="rebook" data-id="${a.id}">${ic('repeat',16)} Book again</button>
+    <button class="btn" data-act="apptEdit" data-id="${a.id}">${ic('edit',16)} Edit</button>
+    <button class="btn bad icon" data-act="apptDelete" data-id="${a.id}" aria-label="Delete">${ic('trash',16)}</button></div>
+  </div>`;
+}
+function reminderText(a){const c=getClient(a.clientId);return(S.settings.reminder||'').replaceAll('{name}',(c?.name||'').split(' ')[0]).replaceAll('{clinic}',S.settings.clinic||'the clinic').replaceAll('{day}',relDay(a.date)==='Today'||relDay(a.date)==='Tomorrow'?relDay(a.date).toLowerCase()+' ('+fmtD(a.date,{weekday:'long',day:'numeric',month:'long'})+')':fmtD(a.date,{weekday:'long',day:'numeric',month:'long'})).replaceAll('{time}',fmtT(a.time))}
+function waNum(p){let d=String(p||'').replace(/[^\d+]/g,'');const cc=String(S.settings.cc||'').replace(/\D/g,'');
+  if(d.startsWith('+'))return d.slice(1);if(d.startsWith('00'))return d.slice(2);if(d.startsWith('0'))return cc+d.slice(1);if(cc&&d.length<=8)return cc+d;return d}
+const waHref=(p,t)=>`https://wa.me/${waNum(p)}${t?'?text='+encodeURIComponent(t):''}`;
+const telHref=p=>'tel:'+String(p).replace(/[^\d+]/g,'');
+
+/* ---------- appointment form ---------- */
+function apptForm(a,isNew){
+  const c=a.clientId?getClient(a.clientId):null;
+  const conf=conflictsFor(a.date,a.time,a.duration,a.id);
+  return`<form class="form" data-form="appt" data-id="${a.id||''}" autocomplete="off">
+  <div class="card-head" style="margin:0"><h2 class="h2">${isNew?'New appointment':'Edit appointment'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <div class="fld"><span>Client</span><div class="ac">
+    <input id="f-client" name="clientName" required value="${esc(c?.name||'')}" placeholder="Search or type a new name" data-input="clientAc" class="inp" autocomplete="off">
+    <input type="hidden" name="clientId" id="f-clientId" value="${a.clientId||''}"><div class="ac-list" id="ac-list" hidden></div></div></div>
+  <label class="fld" id="f-phone-wrap" ${c||!isNew?'hidden':''}><span>Phone <i>(new client)</i></span><input id="f-phone" name="phone" type="tel" inputmode="tel" placeholder="e.g. 03 123 456"></label>
+  <label class="fld"><span>Service</span><select id="f-service" name="serviceId" data-change="svcPick">${S.services.map(s=>`<option value="${s.id}" ${s.id===a.serviceId?'selected':''}>${esc(s.name)} · ${money(s.price)}</option>`).join('')}</select></label>
+  <div class="r2"><label class="fld"><span>Date</span><input id="f-date" type="date" name="date" required value="${a.date}" data-change="conflict"></label>
+    <label class="fld"><span>Time</span><input id="f-time" type="time" name="time" step="300" required value="${a.time}" data-change="conflict"></label></div>
+  <div class="r3"><label class="fld"><span>Minutes</span><input id="f-dur" type="number" name="duration" min="5" max="600" step="5" inputmode="numeric" value="${a.duration}" data-change="conflict"></label>
+    <label class="fld"><span>Price</span><input id="f-price" type="number" name="price" min="0" step="any" inputmode="decimal" value="${a.price}"></label>
+    <label class="fld"><span>Cost <i>opt.</i></span><input id="f-cost" type="number" name="cost" min="0" step="any" inputmode="decimal" value="${+a.cost||''}" placeholder="0"></label></div>
+  <p class="hint">Cost is what this session costs you: transport, tape, consumables. Profit = price − cost.</p>
+  ${!isNew?`<label class="fld"><span>Status</span><select id="f-status" name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${a.status===k?'selected':''}>${v[0]}</option>`).join('')}</select></label>`:''}
+  <div class="r2" style="align-items:center"><label class="chk"><input type="checkbox" id="f-paid" name="paid" ${a.paid?'checked':''}> Already paid</label>
+    <label class="fld"><select id="f-method" name="method" aria-label="Payment method">${METHODS.map(m=>`<option ${(a.method||'Cash')===m?'selected':''}>${m}</option>`).join('')}</select></label></div>
+  ${isNew?`<div class="r2"><label class="fld"><span>Repeat</span><select id="f-repeat" name="repeat" data-change="repeat"><option value="">Just once</option><option value="7">Every week</option><option value="tw">Twice a week</option><option value="14">Every 2 weeks</option><option value="1">Every day</option><option value="2">Every other day</option></select></label>
+    <label class="fld" id="f-count-wrap" hidden><span>Sessions in total</span><select id="f-count" name="count">${[2,3,4,5,6,8,10,12,15,20].map(n=>`<option ${n===6?'selected':''}>${n}</option>`).join('')}</select></label></div>`:''}
+  <label class="fld"><span>Notes</span><textarea id="f-notes" name="notes" rows="2" placeholder="e.g. bring MRI report">${esc(a.notes||'')}</textarea></label>
+  <div class="warnbox" id="conflict" ${conf.length?'':'hidden'}>${conflictMsg(conf)}</div>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div>
+  </form>`;
+}
+function conflictMsg(conf){return conf.length?'Overlaps with '+conf.map(x=>esc(getClient(x.clientId)?.name||'a session')+' at '+fmtT(x.time)).join(', ')+'. You can still save it.':''}
+function mountApptForm(el){
+  const inp=el.querySelector('#f-client');
+  if(!inp.value)setTimeout(()=>inp.focus(),250);
+}
+function acRender(q){
+  const list=$('#ac-list');q=q.trim().toLowerCase();
+  const m=S.clients.filter(c=>!q||c.name.toLowerCase().includes(q)||String(c.phone||'').replace(/\D/g,'').includes(q.replace(/\D/g,'')||'§')).slice(0,7);
+  const exact=S.clients.some(c=>c.name.toLowerCase()===q);
+  let h=m.map(c=>`<button type="button" data-act="acPick" data-id="${c.id}">${avatar(c)}<span><b>${esc(c.name)}</b><br><span class="muted small">${esc(c.phone||c.condition||'')}</span></span></button>`).join('');
+  if(q&&!exact)h+=`<button type="button" data-act="acNew">${ic('plus',18)}<span>New client: <b>${esc(q.replace(/\b\w/g,x=>x.toUpperCase()))}</b></span></button>`;
+  list.innerHTML=h;list.hidden=!h;
+}
+function newApptDefaults(o={}){
+  const svc=S.services[0]||{id:'',price:0,duration:45};
+  let date=o.date||(route().tab==='calendar'&&UI.calMode==='day'?UI.calDate:today());
+  let time=o.time;
+  if(!time){const sameDay=S.appts.filter(a=>a.date===date&&a.status!=='cancelled').sort(byTime);
+    let m=date===today()?Math.ceil(nowMin()/15)*15:S.settings.startHour*60+60;
+    if(sameDay.length){const lastEnd=Math.max(...sameDay.map(a=>toMin(a.time)+(+a.duration)));if(lastEnd>m&&lastEnd<24*60)m=lastEnd}
+    if(m>=23*60)m=S.settings.startHour*60;time=fromMin(m)}
+  return{id:'',clientId:o.clientId||'',serviceId:o.serviceId||svc.id,date,time,duration:o.duration||svc.duration,price:o.price??svc.price,cost:0,status:'scheduled',paid:false,method:'Cash',notes:''};
+}
+
+/* ---------- client form ---------- */
+function clientForm(c){
+  const f=(k,l,t='text',x='')=>`<label class="fld"><span>${l}</span><input id="c-${k}" name="${k}" type="${t}" value="${esc(c[k]||'')}" ${x}></label>`;
+  return`<form class="form" data-form="client" data-id="${c.id||''}" autocomplete="off">
+  <div class="card-head" style="margin:0"><h2 class="h2">${c.id?'Edit client':'New client'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  ${f('name','Full name','text','required')}
+  <div class="r2">${f('phone','Phone','tel','inputmode="tel"')}${f('email','Email','email')}</div>
+  <div class="r2">${f('dob','Date of birth','date')}<label class="fld"><span>Gender</span><select id="c-gender" name="gender">${['','Female','Male','Other'].map(g=>`<option value="${g}" ${c.gender===g?'selected':''}>${g||'–'}</option>`).join('')}</select></label></div>
+  ${f('condition','Condition / reason for coming','text','placeholder="e.g. Lower back pain, post-op knee"')}
+  ${f('referral','Referred by','text','placeholder="Doctor, friend, Instagram…"')}
+  ${f('address','Address (home visits)')}
+  <label class="fld"><span>Medical notes</span><textarea id="c-notes" name="notes" rows="3" placeholder="History, medication, red flags, contraindications">${esc(c.notes||'')}</textarea></label>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`;
+}
+function noteForm(n){
+  return`<form class="form" data-form="note" data-id="${n.id||''}" data-client="${n.clientId}" data-appt="${n.apptId||''}">
+  <div class="card-head" style="margin:0"><div><h2 class="h2">${n.id?'Edit note':'Treatment note'}</h2><div class="muted small">${esc(getClient(n.clientId)?.name||'')}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <label class="fld"><span>Date</span><input id="n-date" type="date" name="date" value="${n.date}" required></label>
+  <div class="fld"><span>Pain score (0 = none, 10 = worst)</span><div class="pain"><input id="n-pain" type="range" name="pain" min="0" max="10" step="1" value="${n.pain===''||n.pain==null?5:n.pain}" data-input="painOut" ${n.pain===''||n.pain==null?'data-unset="1"':''}><output id="n-pain-out">${n.pain===''||n.pain==null?'–':n.pain+'/10'}</output></div>
+    <label class="chk small" style="font-weight:500"><input type="checkbox" id="n-nopain" name="nopain" ${n.pain===''||n.pain==null?'checked':''}> Not recorded</label></div>
+  <label class="fld"><span>Note <button type="button" class="btn sm ghost" data-act="soap" style="padding:0 4px;font-size:12px">Insert S/O/A/P headings</button></span><textarea id="n-text" name="text" rows="7" required placeholder="What the client reported, what you found, what you did, the plan and home exercises">${esc(n.text||'')}</textarea></label>
+  <div class="sheet-actions">${n.id?`<button type="button" class="btn bad icon" data-act="deleteNote" data-id="${n.id}" aria-label="Delete note">${ic('trash',16)}</button><span style="flex:1"></span>`:''}<button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`;
+}
+function expenseForm(e){
+  return`<form class="form" data-form="expense" data-id="${e.id||''}">
+  <div class="card-head" style="margin:0"><h2 class="h2">${e.id?'Edit expense':'New expense'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <div class="r2"><label class="fld"><span>Date</span><input id="e-date" type="date" name="date" value="${e.date}" required></label>
+  <label class="fld"><span>Amount</span><input id="e-amount" type="number" name="amount" min="0" step="any" inputmode="decimal" value="${e.amount??''}" required></label></div>
+  <label class="fld"><span>Type</span><select id="e-cat" name="category">${EXP_CATS.map(c=>`<option ${e.category===c?'selected':''}>${c}</option>`).join('')}</select></label>
+  <label class="fld"><span>Note</span><input id="e-note" name="note" value="${esc(e.note||'')}" placeholder="e.g. TENS machine, clinic rent"></label>
+  ${e.id?'':`<label class="fld"><span>Repeat</span><select id="e-rep" name="rep"><option value="1">Just this once</option>${[3,6,12].map(n=>`<option value="${n}">Every month for ${n} months</option>`).join('')}</select></label>`}
+  <div class="sheet-actions">${e.id?`<button type="button" class="btn bad icon" data-act="deleteExpense" data-id="${e.id}" aria-label="Delete expense">${ic('trash',16)}</button><span style="flex:1"></span>`:''}<button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`;
+}
+function serviceForm(v){
+  return`<form class="form" data-form="service" data-id="${v.id||''}">
+  <div class="card-head" style="margin:0"><h2 class="h2">${v.id?'Edit service':'New service'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <label class="fld"><span>Name</span><input id="v-name" name="name" value="${esc(v.name||'')}" required placeholder="e.g. Dry needling"></label>
+  <div class="r2"><label class="fld"><span>Price</span><input id="v-price" type="number" name="price" min="0" step="any" inputmode="decimal" value="${v.price??''}" required></label>
+  <label class="fld"><span>Minutes</span><input id="v-dur" type="number" name="duration" min="5" step="5" inputmode="numeric" value="${v.duration||45}" required></label></div>
+  <div class="fld"><span>Colour on the calendar</span><div class="swatches">${SVC_COLORS.map(c=>`<label style="--svc:${c}"><input type="radio" name="color" value="${c}" ${(v.color||SVC_COLORS[0])===c?'checked':''}><span></span></label>`).join('')}</div></div>
+  <div class="sheet-actions">${v.id&&S.services.length>1?`<button type="button" class="btn bad icon" data-act="deleteService" data-id="${v.id}" aria-label="Delete service">${ic('trash',16)}</button><span style="flex:1"></span>`:''}<button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`;
+}
+
+/* ================= actions ================= */
+const ACT={
+  close:()=>closeModal(),
+  askBtn:el=>{const b=ASK[+el.dataset.i];const r=b&&b.run();if(r!=='keep')closeModal(typeof r==='function'?r:null);render()},
+  period:el=>{UI.period=el.dataset.v;render()},
+  histAll:()=>{UI.histAll=true;render()},
+  newAppt:el=>{const a=newApptDefaults({clientId:el.dataset.client});openModal(apptForm(a,true),mountApptForm)},
+  tlNew:(el,e)=>{const r=el.getBoundingClientRect();const y=e.clientY-r.top;const m=Math.floor((+el.dataset.h0*60+y/HH*60)/15)*15;
+    openModal(apptForm(newApptDefaults({date:UI.calDate,time:fromMin(Math.min(m,23*60+45))}),true),mountApptForm)},
+  openAppt:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);if(a)openModal(apptDetail(a))},
+  toClient:el=>{closeModal(()=>go('client-'+el.dataset.id))},
+  apptStatus:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.status=el.dataset.v;if(el.dataset.paid){a.paid=true;a.method=a.method||'Cash'}
+    if(a.status==='scheduled'||a.status==='cancelled')a.paid=false;
+    save();render();replaceModal(apptDetail(a));
+    toast({done:a.paid?'Marked done and paid':'Marked done',noshow:'Marked as no-show',cancelled:'Marked as cancelled',scheduled:'Back to booked'}[a.status])},
+  apptPaid:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.paid=!a.paid;a.method=a.method||'Cash';save();render();replaceModal(apptDetail(a))},
+  apptMethod:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.method=el.dataset.v;save();replaceModal(apptDetail(a))},
+  apptEdit:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);replaceModal(apptForm(a,false))},
+  rebook:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);const n=newApptDefaults({clientId:a.clientId,serviceId:a.serviceId,date:addDays(a.date<today()?today():a.date,7),time:a.time,duration:a.duration,price:a.price});replaceModal(apptForm(n,true))},
+  apptDelete:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);const nm=esc(getClient(a.clientId)?.name||'');
+    const later=a.seriesId?S.appts.filter(x=>x.seriesId===a.seriesId&&x.id!==a.id&&(x.date+x.time)>(a.date+a.time)&&x.status==='scheduled'):[];
+    const del=ids=>{S.appts=S.appts.filter(x=>!ids.includes(x.id));save();toast(ids.length>1?ids.length+' sessions deleted':'Session deleted')};
+    const btns=[{label:'Delete',cls:'bad',run:()=>del([a.id])}];
+    if(later.length)btns.push({label:`Delete this and ${later.length} later`,cls:'bad',run:()=>del([a.id,...later.map(x=>x.id)])});
+    ask('Delete this session?',`${nm}, ${esc(fmtD(a.date))} at ${fmtT(a.time)}. To keep a record that it didn't happen, mark it Cancelled instead.`,btns)},
+  quickDone:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.status='done';a.paid=true;a.method=a.method||'Cash';save();render();toast('Done and paid. Tap the session to change it.')},
+  quickNoshow:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.status='noshow';save();render();toast('Marked as no-show')},
+  reviewAllDone:()=>{const R=needsReview();ask(`Mark ${R.length} sessions done & paid?`,'Use this when everyone came and paid cash. You can still change single sessions afterwards.',[{label:'Mark all',cls:'ok',run:()=>{R.forEach(a=>{a.status='done';a.paid=true;a.method=a.method||'Cash'});save();toast(R.length+' sessions updated')}}])},
+  quickPaid:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.paid=true;a.method=a.method||'Cash';save();render();toast(`${getClient(a.clientId)?.name||'Session'} marked as paid`)},
+  payAllClient:el=>{const id=el.dataset.id;const L=S.appts.filter(a=>a.clientId===id&&countsIncome(a)&&!a.paid);ask(`Mark ${money(sum(L,a=>+a.price))} as paid?`,`${L.length} session${L.length>1?'s':''} for ${esc(getClient(id).name)}.`,[{label:'Mark paid',cls:'ok',run:()=>{L.forEach(a=>{a.paid=true;a.method=a.method||'Cash'});save();toast('Marked as paid')}}])},
+  calStep:el=>calStep(+el.dataset.v),
+  calToday:()=>{UI.calDate=today();UI.scrollCal=true;render()},
+  calMode:el=>{UI.calMode=el.dataset.v;UI.scrollCal=true;render()},
+  calPick:el=>{UI.calDate=el.dataset.v;if(UI.calMode==='month')UI.calMode='day';UI.scrollCal=true;render()},
+  monthStep:el=>{UI.moneyMonth=addMonths(UI.moneyMonth,+el.dataset.v);render()},
+  newClient:()=>openModal(clientForm({}),el=>setTimeout(()=>el.querySelector('#c-name').focus(),250)),
+  editClient:el=>openModal(clientForm(getClient(el.dataset.id))),
+  deleteClient:el=>{const c=getClient(el.dataset.id);const n=S.appts.filter(a=>a.clientId===c.id).length;
+    ask(`Delete ${c.name}?`,`This also deletes their ${n} session${n===1?'':'s'} and treatment notes, and removes that income from your totals.`,[{label:'Delete client',cls:'bad',run:()=>{S.clients=S.clients.filter(x=>x.id!==c.id);S.appts=S.appts.filter(a=>a.clientId!==c.id);S.notes=S.notes.filter(x=>x.clientId!==c.id);save();toast('Client deleted');return()=>go('clients')}}])},
+  acPick:el=>{const c=getClient(el.dataset.id);$('#f-client').value=c.name;$('#f-clientId').value=c.id;$('#ac-list').hidden=true;$('#f-phone-wrap').hidden=true;
+    const last=S.appts.filter(a=>a.clientId===c.id).sort(byTime).pop();
+    if(last&&!$('form[data-form=appt]').dataset.id){$('#f-service').value=last.serviceId;$('#f-dur').value=last.duration;$('#f-price').value=last.price;CHANGE.conflict()}},
+  acNew:()=>{const v=$('#f-client').value.trim().replace(/\b\w/g,x=>x.toUpperCase());$('#f-client').value=v;$('#f-clientId').value='';$('#ac-list').hidden=true;$('#f-phone-wrap').hidden=false;setTimeout(()=>$('#f-phone').focus(),50)},
+  newNote:el=>{const n={clientId:el.dataset.client,apptId:el.dataset.appt||'',date:el.dataset.appt?S.appts.find(a=>a.id===el.dataset.appt).date:today(),pain:'',text:''};stack.length?replaceModal(noteForm(n)):openModal(noteForm(n))},
+  editNote:el=>openModal(noteForm(S.notes.find(n=>n.id===el.dataset.id))),
+  deleteNote:el=>{ask('Delete this note?','',[{label:'Delete',cls:'bad',run:()=>{S.notes=S.notes.filter(n=>n.id!==el.dataset.id);save();toast('Note deleted')}}])},
+  soap:()=>{const t=$('#n-text');const add='S: \nO: \nA: \nP: ';t.value=t.value?t.value+'\n'+add:add;t.focus();t.setSelectionRange(3,3)},
+  newExpense:()=>openModal(expenseForm({date:UI.moneyMonth===today().slice(0,7)?today():UI.moneyMonth+'-01',category:'Rent'})),
+  editExpense:el=>openModal(expenseForm(S.expenses.find(e=>e.id===el.dataset.id))),
+  deleteExpense:el=>ask('Delete this expense?','',[{label:'Delete',cls:'bad',run:()=>{S.expenses=S.expenses.filter(e=>e.id!==el.dataset.id);save();toast('Expense deleted')}}]),
+  newService:()=>openModal(serviceForm({color:SVC_COLORS[S.services.length%SVC_COLORS.length]})),
+  editService:el=>openModal(serviceForm(S.services.find(v=>v.id===el.dataset.id))),
+  deleteService:el=>{const v=S.services.find(x=>x.id===el.dataset.id);ask(`Delete ${v.name}?`,'Past sessions keep their price. They show as "Session" on the calendar.',[{label:'Delete',cls:'bad',run:()=>{S.services=S.services.filter(x=>x.id!==v.id);save();toast('Service deleted')}}])},
+  setPin:()=>pinSetup(),
+  removePin:()=>ask('Turn off the PIN lock?','Anyone holding the phone could then open client files.',[{label:'Turn off',cls:'bad',run:()=>{S.settings.pinHash='';save();toast('PIN lock is off')}}]),
+  exportBackup:()=>exportBackup(),
+  restoreBackup:()=>pickFile('backup'),
+  importIcs:()=>pickFile('ics'),
+  exportCsv:()=>exportCsv(),
+  loadDemo:()=>{loadDemo();save();render();toast('Sample data loaded')},
+  clearDemo:()=>ask('Remove the sample data?','Only the made-up clients, sessions and expenses are removed.',[{label:'Remove',cls:'bad',run:()=>{clearDemo();save();toast('Sample data removed')}}]),
+  eraseAll:()=>ask('Erase everything?','All clients, sessions, notes and expenses on this phone are deleted. Back up first if you might need them.',[{label:'Erase everything',cls:'bad',run:()=>{const keep=S.settings;S=defaults();S.settings={...keep,lastBackup:''};save();toast('Everything erased')}}]),
+  onbStart:el=>{const f=el.closest('.form');S.settings.clinic=f.querySelector('#o-clinic').value.trim();S.settings.therapist=f.querySelector('#o-name').value.trim();S.settings.currency=f.querySelector('#o-cur').value.trim()||'$';S.settings.onboarded=true;if(el.dataset.demo)loadDemo();save();closeModal();render()},
+};
+const INPUT={
+  clientSearch:el=>{UI.q=el.value;$('#client-list').innerHTML=clientList()},
+  clientAc:el=>{$('#f-clientId').value='';const exact=S.clients.find(c=>c.name.toLowerCase()===el.value.trim().toLowerCase());if(exact)$('#f-clientId').value=exact.id;$('#f-phone-wrap').hidden=!!exact||!el.value.trim()||el.closest('form').dataset.id!=='';acRender(el.value)},
+  painOut:el=>{$('#n-pain-out').textContent=el.value+'/10';$('#n-nopain').checked=false},
+};
+const CHANGE={
+  setting:el=>{const k=el.dataset.k;let v=el.value;if('num'in el.dataset)v=+v;if(k==='currency')v=v.trim()||'$';S.settings[k]=v;
+    if(k==='startHour'&&S.settings.endHour<=v)S.settings.endHour=Math.min(24,v+1);if(k==='endHour'&&S.settings.startHour>=v)S.settings.startHour=Math.max(0,v-1);
+    save();if(k==='theme')applyTheme();if(k!=='reminder'&&k!=='clinic'&&k!=='therapist'&&k!=='cc')render();toast('Saved')},
+  svcPick:el=>{const s=getSvc(el.value);$('#f-dur').value=s.duration;$('#f-price').value=s.price;CHANGE.conflict()},
+  conflict:()=>{const f=$('form[data-form=appt]');if(!f)return;const c=conflictsFor($('#f-date').value,$('#f-time').value,$('#f-dur').value,f.dataset.id);const b=$('#conflict');b.innerHTML=conflictMsg(c);b.hidden=!c.length},
+  repeat:el=>{$('#f-count-wrap').hidden=!el.value},
+};
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.ac')){const l=$('#ac-list');if(l)l.hidden=true}
+  const ext=e.target.closest('a[data-ext]');
+  if(ext&&isNative()){e.preventDefault();location.href=ext.getAttribute('href');return}
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const f=ACT[el.dataset.act];if(f){if(el.tagName==='A')e.preventDefault();f(el,e)}
+});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[role=button][data-act]')){e.preventDefault();e.target.click()}});
+document.addEventListener('input',e=>{const n=e.target.dataset&&e.target.dataset.input;if(n&&INPUT[n])INPUT[n](e.target,e)});
+document.addEventListener('change',e=>{const n=e.target.dataset&&e.target.dataset.change;if(n&&CHANGE[n])CHANGE[n](e.target,e)});
+document.addEventListener('focusin',e=>{if(e.target.id==='f-client')acRender(e.target.value)});
+
+/* ================= form submit ================= */
+const FORMS={
+  appt:(f,fd)=>{
+    const name=String(fd.get('clientName')||'').trim();if(!name){toast('Type the client name');return}
+    let c=getClient(fd.get('clientId'));
+    if(!c||c.name.toLowerCase()!==name.toLowerCase()){c=S.clients.find(x=>x.name.toLowerCase()===name.toLowerCase());
+      if(!c){c={id:uid(),name,phone:String(fd.get('phone')||'').trim(),createdAt:today()};S.clients.push(c)}}
+    const base={clientId:c.id,serviceId:fd.get('serviceId'),date:fd.get('date'),time:fd.get('time'),duration:Math.max(5,+fd.get('duration')||45),
+      price:+fd.get('price')||0,cost:+fd.get('cost')||0,paid:fd.get('paid')==='on',method:fd.get('method')||'Cash',notes:String(fd.get('notes')||'').trim()};
+    if(!base.date||!base.time){toast('Pick a date and time');return}
+    const id=f.dataset.id;
+    if(id){const a=S.appts.find(x=>x.id===id);Object.assign(a,base,{status:fd.get('status')||a.status});
+      if(!countsIncome(a)&&a.status!=='noshow')a.paid=false;save();closeModal();render();toast('Saved');return}
+    const rep=fd.get('repeat'),count=rep?+fd.get('count'):1,seriesId=rep?uid():'';
+    let d=base.date;
+    for(let i=0;i<count;i++){
+      S.appts.push({...base,id:uid(),date:d,status:'scheduled',paid:i===0?base.paid:false,seriesId,createdAt:today()});
+      d=rep==='tw'?addDays(d,i%2===0?3:4):addDays(d,+rep||7);
+    }
+    save();closeModal();
+    if(route().tab==='calendar'){UI.calDate=base.date}
+    render();toast(count>1?`${count} sessions booked for ${c.name}`:`Booked ${c.name}, ${relDay(base.date)} ${fmtT(base.time)}`);
+  },
+  client:(f,fd)=>{
+    const o={};for(const k of['name','phone','email','dob','gender','condition','referral','address','notes'])o[k]=String(fd.get(k)||'').trim();
+    if(!o.name){toast('Type the client name');return}
+    let id=f.dataset.id;
+    if(id)Object.assign(getClient(id),o);else{id=uid();S.clients.push({id,...o,createdAt:today()})}
+    save();closeModal(()=>{if(!f.dataset.id)go('client-'+id)});render();toast('Saved');
+  },
+  note:(f,fd)=>{
+    const o={clientId:f.dataset.client,apptId:f.dataset.appt,date:fd.get('date'),pain:fd.get('nopain')==='on'?'':+fd.get('pain'),text:String(fd.get('text')||'').trim()};
+    if(!o.text){toast('Write the note first');return}
+    if(f.dataset.id)Object.assign(S.notes.find(n=>n.id===f.dataset.id),o);else S.notes.push({id:uid(),at:new Date().toISOString(),...o});
+    save();closeModal();render();toast('Note saved');
+  },
+  expense:(f,fd)=>{
+    const o={date:fd.get('date'),amount:+fd.get('amount')||0,category:fd.get('category'),note:String(fd.get('note')||'').trim()};
+    if(f.dataset.id)Object.assign(S.expenses.find(e=>e.id===f.dataset.id),o);
+    else{const n=+fd.get('rep')||1;const day=+o.date.slice(8);for(let i=0;i<n;i++){const ym=addMonths(o.date.slice(0,7),i);S.expenses.push({...o,id:uid(),date:ym+'-'+pad(Math.min(day,dim(ym)))})}}
+    save();closeModal();render();toast('Expense saved');
+  },
+  service:(f,fd)=>{
+    const o={name:String(fd.get('name')).trim(),price:+fd.get('price')||0,duration:+fd.get('duration')||45,color:fd.get('color')||SVC_COLORS[0]};
+    if(f.dataset.id)Object.assign(S.services.find(v=>v.id===f.dataset.id),o);else S.services.push({id:uid(),...o});
+    save();closeModal();render();toast('Saved');
+  },
+};
+document.addEventListener('submit',e=>{const f=e.target;if(f.dataset.form&&FORMS[f.dataset.form]){e.preventDefault();FORMS[f.dataset.form](f,new FormData(f))}});
+
+/* ================= PIN lock ================= */
+async function hashPin(p){const salted='physiodesk:'+p;try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salted));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of salted)h=((h*33)^c.charCodeAt(0))>>>0;return'd'+h.toString(16)}}
+function keypad(title,sub,onDone,opts={}){
+  const root=$('#lock-root');let pin='';
+  root.innerHTML=`<div class="lock" role="dialog" aria-label="${esc(title)}"><span class="logo" style="width:52px;height:52px;border-radius:16px">${ic('lock',26)}</span>
+    <div style="text-align:center"><div class="h2">${esc(title)}</div><div class="muted small" id="pin-sub">${esc(sub)}</div></div>
+    <div class="pin-dots" id="pin-dots">${'<i></i>'.repeat(4)}</div>
+    <div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join('')}<button class="ghost" data-k="c">${opts.cancel?'Cancel':''}</button><button data-k="0">0</button><button class="ghost" data-k="b">Delete</button></div></div>`;
+  const dots=()=>root.querySelectorAll('#pin-dots i').forEach((d,i)=>d.classList.toggle('f',i<pin.length));
+  const fail=msg=>{pin='';dots();const d=$('#pin-dots');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');if(msg)$('#pin-sub').textContent=msg};
+  const press=async k=>{if(k==='b'){pin=pin.slice(0,-1);dots();return}if(k==='c'){if(opts.cancel){root.innerHTML='';removeEventListener('keydown',kb)}return}
+    if(pin.length>=4)return;pin+=k;dots();if(pin.length===4){const p=pin;const ok=await onDone(p,fail);if(ok){root.innerHTML='';removeEventListener('keydown',kb)}}};
+  root.querySelector('.pad').addEventListener('click',e=>{const b=e.target.closest('button');if(b)press(b.dataset.k)});
+  const kb=e=>{if(/^\d$/.test(e.key))press(e.key);else if(e.key==='Backspace')press('b')};addEventListener('keydown',kb);
+}
+function lockNow(){if(!S.settings.pinHash||$('#lock-root').innerHTML)return;
+  keypad('PhysioDesk is locked','Enter your 4-digit PIN',async(p,fail)=>{if(await hashPin(p)===S.settings.pinHash)return true;fail('Wrong PIN, try again');return false})}
+function pinSetup(){let first='';
+  keypad('Choose a PIN','4 digits you will remember',async(p,fail)=>{
+    if(!first){first=p;fail('');$('#pin-sub').textContent='Type the same PIN again';$('#pin-dots').classList.remove('shake');return false}
+    if(p!==first){first='';fail('The two PINs were different. Choose a PIN');return false}
+    S.settings.pinHash=await hashPin(p);save();render();toast('PIN lock is on');return true},{cancel:true})}
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(S.settings.pinHash&&hiddenAt&&Date.now()-hiddenAt>3*60*1000)lockNow()});
+
+/* ================= files: backup, csv, ics ================= */
+async function saveFile(name,text,mime){
+  const Cap=window.Capacitor;
+  if(isNative()&&Cap.Plugins&&Cap.Plugins.Filesystem&&Cap.Plugins.Share){
+    try{const r=await Cap.Plugins.Filesystem.writeFile({path:name,data:text,directory:'CACHE',encoding:'utf8'});
+      await Cap.Plugins.Share.share({title:name,files:[r.uri],dialogTitle:'Save or send '+name});return true}
+    catch(e){const m=String(e&&e.message||e);if(/cancel/i.test(m))return false;toast('Could not share the file: '+m);return false}}
+  try{const u=URL.createObjectURL(new Blob([text],{type:mime}));const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);return true}
+  catch(e){toast('This browser blocked the download');return false}
+}
+async function exportBackup(){
+  const name=`PhysioDesk-backup-${today()}.json`;
+  const ok=await saveFile(name,JSON.stringify({app:'PhysioDesk',exported:new Date().toISOString(),data:{...S,settings:{...S.settings,pinHash:''}}},null,1),'application/json');
+  if(ok){S.settings.lastBackup=today();save();render();toast('Backup ready: '+name)}
+}
+function csvCell(v){v=String(v??'');return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function exportCsv(){
+  const rows=[['Type','Date','Time','Client','Phone','Service / category','Status','Minutes','Price','Session cost','Profit','Paid','Payment method','Notes']];
+  S.appts.slice().sort(byTime).forEach(a=>{const c=getClient(a.clientId)||{};const inc=countsIncome(a);
+    rows.push(['Session',a.date,a.time,c.name,c.phone,getSvc(a.serviceId).name,STATUS[a.status][0],a.duration,a.price,a.cost||0,inc?(+a.price)-(+a.cost||0):0,inc?(a.paid?'Yes':'No'):'',a.paid?a.method:'',a.notes])});
+  S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>rows.push(['Expense',e.date,'','','',e.category,'','',-e.amount,'',-e.amount,'','',e.note]));
+  saveFile(`PhysioDesk-${today()}.csv`,'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv');
+}
+let pickMode='';
+function pickFile(mode){pickMode=mode;const i=$('#file-in');i.value='';i.click()}
+$('#file-in').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const t=String(r.result||'');if(pickMode==='ics'||/BEGIN:VCALENDAR/.test(t.slice(0,400)))icsPreview(t);else restoreFrom(t)};
+  r.onerror=()=>toast('Could not read that file');r.readAsText(f)});
+function restoreFrom(t){
+  let d;try{const j=JSON.parse(t);d=j.data||j}catch(e){toast('That file is not a PhysioDesk backup');return}
+  if(!d||!Array.isArray(d.appts)||!Array.isArray(d.clients)){toast('That file is not a PhysioDesk backup');return}
+  ask('Restore this backup?',`It holds ${d.clients.length} clients and ${d.appts.length} sessions. It replaces what is on this phone now.`,[{label:'Restore',run:()=>{
+    const pin=S.settings.pinHash,def=defaults();S={...def,...d,settings:{...def.settings,...d.settings,pinHash:pin,onboarded:true}};save();applyTheme();toast('Backup restored')}}]);
+}
+/* --- .ics import (Google Calendar, Outlook, Apple) --- */
+function parseICS(text){
+  const lines=text.replace(/\r?\n[ \t]/g,'').split(/\r?\n/);const evs=[];let cur=null,depth=0;
+  for(const l of lines){
+    if(l==='BEGIN:VEVENT'){cur={};depth=0;continue}
+    if(l==='END:VEVENT'){if(cur)evs.push(cur);cur=null;continue}
+    if(!cur)continue;
+    if(l.startsWith('BEGIN:')){depth++;continue}if(l.startsWith('END:')){depth--;continue}if(depth>0)continue;
+    const i=l.indexOf(':');if(i<0)continue;
+    const left=l.slice(0,i),val=l.slice(i+1);const[name,...params]=left.split(';');const N=name.toUpperCase();
+    if(N==='EXDATE'){(cur.EXDATE=cur.EXDATE||[]).push(...val.split(',').map(v=>({val:v,params})));continue}
+    cur[N]={val,params};
+  }
+  return evs;
+}
+const icsText=v=>String(v||'').replace(/\\n/gi,'\n').replace(/\\([,;\\])/g,'$1').trim();
+function icsDate(p){
+  if(!p)return null;const v=p.val;const m=v.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?/);if(!m)return null;
+  if(!m[4]||p.params.includes('VALUE=DATE'))return{allDay:true,date:new Date(+m[1],m[2]-1,+m[3])};
+  if(m[7])return{date:new Date(Date.UTC(+m[1],m[2]-1,+m[3],+m[4],+m[5]))};
+  return{date:new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5])};
+}
+function expandEvent(ev,limitFrom,limitTo){
+  const st=icsDate(ev.DTSTART);if(!st||st.allDay)return[];
+  const en=icsDate(ev.DTEND);let dur=en&&!en.allDay?Math.round((en.date-st.date)/6e4):45;
+  const m=ev.DURATION&&ev.DURATION.val.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);if(m&&!en)dur=(+m[1]||0)*60+(+m[2]||0);
+  if(!(dur>0&&dur<=600))dur=45;
+  const out=[];const ex=new Set((ev.EXDATE||[]).map(x=>{const d=icsDate(x);return d?d.date.getTime():0}));
+  const push=d=>{if(d>=limitFrom&&d<=limitTo&&!ex.has(d.getTime()))out.push({start:new Date(d),dur})};
+  const rr=ev.RRULE&&Object.fromEntries(ev.RRULE.val.split(';').map(x=>x.split('=')));
+  if(!rr||!/^(DAILY|WEEKLY)$/.test(rr.FREQ)){push(st.date);return out}
+  const iv=+rr.INTERVAL||1,count=+rr.COUNT||0;const until=rr.UNTIL?icsDate({val:rr.UNTIL,params:[]}).date:null;
+  const days=rr.BYDAY?rr.BYDAY.split(',').map(x=>['SU','MO','TU','WE','TH','FR','SA'].indexOf(x.slice(-2))).filter(x=>x>=0):null;
+  let n=0;const d=new Date(st.date);const startWeek=new Date(d);startWeek.setDate(d.getDate()-d.getDay());startWeek.setHours(0,0,0,0);
+  for(let guard=0;guard<3000;guard++){
+    if(until&&d>until)break;if(count&&n>=count)break;if(d>limitTo)break;
+    let ok=true;
+    if(rr.FREQ==='WEEKLY'){const w=Math.floor((new Date(d.getFullYear(),d.getMonth(),d.getDate())-startWeek)/(7*864e5));ok=w%iv===0&&(days?days.includes(d.getDay()):d.getDay()===st.date.getDay())}
+    else ok=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(st.date.getFullYear(),st.date.getMonth(),st.date.getDate()))/864e5)%iv===0;
+    if(ok&&d>=st.date){n++;push(d)}
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+let ICS=null;
+function icsPreview(text){
+  const evs=parseICS(text);if(!evs.length){toast('No events found in that file');return}
+  const from=new Date();from.setFullYear(from.getFullYear()-1);const to=new Date();to.setFullYear(to.getFullYear()+1);
+  const items=[];const seen=new Set();
+  // Overridden single occurrences (RECURRENCE-ID) replace the series instance at the same time
+  const overrides=new Set(evs.filter(e=>e['RECURRENCE-ID']).map(e=>(e.UID?.val||'')+'|'+(icsDate(e['RECURRENCE-ID'])?.date.getTime())));
+  for(const ev of evs){
+    if(ev.STATUS&&/CANCELLED/i.test(ev.STATUS.val))continue;
+    const title=icsText(ev.SUMMARY?.val);if(!title)continue;
+    for(const o of expandEvent(ev,from,to)){
+      const k=(ev.UID?.val||title)+'|'+o.start.getTime();
+      if(!ev['RECURRENCE-ID']&&overrides.has(k))continue;
+      if(seen.has(k))continue;seen.add(k);
+      items.push({title,desc:icsText(ev.DESCRIPTION?.val),date:ymd(o.start),time:pad(o.start.getHours())+':'+pad(o.start.getMinutes()),dur:o.dur,key:k});
+    }
+  }
+  if(!items.length){toast('No timed events in the last or next 12 months');return}
+  const already=new Set(S.appts.map(a=>a.importKey).filter(Boolean));
+  ICS=items.filter(i=>!already.has(i.key));
+  const t=today(),past=ICS.filter(i=>i.date<t).length,people=new Set(ICS.map(i=>cleanName(i.title).toLowerCase())).size;
+  const html=`<div class="form"><div class="card-head" style="margin:0"><h2 class="h2">Import calendar</h2><button class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+    <p style="margin:0">Found <b>${ICS.length}</b> appointments for about <b>${people}</b> people: ${past} in the past year and ${ICS.length-past} coming up.${items.length>ICS.length?` ${items.length-ICS.length} were imported before and are skipped.`:''}</p>
+    <p class="hint">Each event title becomes the client name ("Session with" and similar words are dropped). You can rename clients afterwards.</p>
+    <label class="fld"><span>Service for these sessions</span><select id="i-svc">${S.services.map(s=>`<option value="${s.id}">${esc(s.name)} · ${money(s.price)}</option>`).join('')}</select></label>
+    <label class="chk"><input type="checkbox" id="i-past" checked> Count past ones as done & paid</label>
+    <div class="list" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:0 10px">${ICS.slice(0,30).map(i=>`<div class="row"><div class="t">${esc(fmtD(i.date,{day:'numeric',month:'short'}))}<small>${fmtT(i.time)}</small></div><div class="info"><b>${esc(cleanName(i.title))}</b><span>${i.dur} min</span></div></div>`).join('')}${ICS.length>30?`<div class="hint" style="padding:8px 0">and ${ICS.length-30} more</div>`:''}</div>
+    <div class="sheet-actions"><button class="btn ghost" data-act="close">Cancel</button><button class="btn primary" data-act="icsGo">${ic('down',16)} Import ${ICS.length}</button></div></div>`;
+  openModal(html);
+}
+function cleanName(t){return t.replace(/^(physio(therapy)?|session|appointment|appt|rdv|seance|séance)\s*(with|w\/|-|:|–)?\s*/i,'').replace(/\s*[-–:|]\s*(physio(therapy)?|session|appointment)$/i,'').trim()||t}
+ACT.icsGo=()=>{
+  const svc=getSvc($('#i-svc').value),pastDone=$('#i-past').checked,t=today();let nc=0;
+  for(const i of ICS){
+    const nm=cleanName(i.title);let c=S.clients.find(x=>x.name.toLowerCase()===nm.toLowerCase());
+    if(!c){const ph=(i.desc.match(/(\+?\d[\d \-]{6,}\d)/)||[])[1]||'';c={id:uid(),name:nm,phone:ph.trim(),createdAt:t};S.clients.push(c);nc++}
+    const past=i.date<t;
+    S.appts.push({id:uid(),clientId:c.id,serviceId:svc.id||'',date:i.date,time:i.time,duration:i.dur,price:svc.price||0,cost:0,
+      status:past&&pastDone?'done':'scheduled',paid:past&&pastDone,method:'Cash',notes:i.desc.slice(0,400),importKey:i.key,createdAt:t});
+  }
+  const n=ICS.length;S.settings.onboarded=true;save();closeModal();render();toast(`Imported ${n} appointments and ${nc} new clients`);
+};
+
+/* ================= sample data ================= */
+function loadDemo(){
+  clearDemo();
+  let seed=7;const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+  const pick=a=>a[Math.floor(rnd()*a.length)];
+  const people=[['Rami Haddad','03 412 558','Lower back pain (L4–L5)','M'],['Maya Khoury','71 230 914','ACL reconstruction rehab','F'],['Georges Nassar','76 118 302','Frozen shoulder','M'],['Lara Saab','03 905 771','Neck pain, desk posture','F'],
+    ['Karim Fares','70 664 120','Ankle sprain, grade II','M'],['Nour El Hage','81 342 667','Post-natal pelvic floor','F'],['Elie Maalouf','03 778 410','Tennis elbow','M'],['Hiba Mansour','71 509 236','Knee osteoarthritis','F'],
+    ['Tony Azar','76 845 093','Hamstring strain','M'],['Rita Chahine','03 251 884','Sciatica','F'],['Sami Daher','70 393 517','Rotator cuff tendinopathy','M'],['Joelle Bou Khalil','81 127 640','Plantar fasciitis','F']];
+  const t=today();
+  const svc=id=>S.services.find(s=>s.id===id)||S.services[0];
+  const cl=people.map(([name,phone,condition,g],i)=>({id:'demo-c'+i,name,phone,condition,gender:g==='F'?'Female':'Male',dob:(1960+Math.floor(rnd()*40))+'-'+pad(1+Math.floor(rnd()*12))+'-'+pad(1+Math.floor(rnd()*27)),demo:true,createdAt:addDays(t,-150)}));
+  S.clients.push(...cl);
+  const slots=['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00','18:00'];
+  const first={};
+  for(let k=-150;k<=13;k++){
+    const d=addDays(t,k),wd=pd(d).getDay();if(wd===0&&k!==0)continue;
+    const n=wd===6||wd===0?3:3+Math.floor(rnd()*3);
+    const used=new Set();
+    for(let j=0;j<n;j++){
+      let tm=pick(slots);if(used.has(tm))continue;used.add(tm);
+      const c=cl[Math.floor(Math.pow(rnd(),1.3)*cl.length)];
+      const sid=!first[c.id]?'s2':c.name==='Hiba Mansour'?'s3':c.name==='Tony Azar'&&rnd()<.5?'s4':'s1';first[c.id]=true;
+      const s=svc(sid);const past=k<0||(k===0&&toMin(tm)+s.duration<nowMin());
+      let status='scheduled',paid=false;
+      if(past){const r=rnd();status=r<.9?'done':r<.95?'noshow':'cancelled';paid=status==='done'&&(k<-10?rnd()<.97:rnd()<.75)}
+      S.appts.push({id:'demo-a'+k+'-'+j,clientId:c.id,serviceId:sid,date:d,time:tm,duration:s.duration,price:s.price,cost:sid==='s3'?5:0,status,paid,
+        method:paid?pick(['Cash','Cash','Cash','Bank transfer','Card','Wallet app']):'Cash',notes:'',demo:true,createdAt:d});
+    }
+  }
+  for(let i=5;i>=0;i--){const ym=addMonths(t.slice(0,7),-i);if(i===0&&+t.slice(8)<5){S.expenses.push({id:'demo-e10',date:ym+'-01',category:'Rent',amount:450,note:'Clinic rent',demo:true});continue}
+    S.expenses.push({id:'demo-e1'+i,date:ym+'-01',category:'Rent',amount:450,note:'Clinic rent',demo:true});
+    S.expenses.push({id:'demo-e2'+i,date:ym+'-05',category:'Utilities',amount:60+Math.round(rnd()*40),note:'Electricity & generator',demo:true});
+    if(rnd()<.8)S.expenses.push({id:'demo-e3'+i,date:ym+'-12',category:'Supplies',amount:30+Math.round(rnd()*70),note:pick(['Kinesio tape & gel','Massage oil, towels','Exercise bands']),demo:true});
+  }
+  S.expenses=S.expenses.filter(e=>!e.demo||e.date<=t);
+  S.expenses.push({id:'demo-e9',date:addMonths(t.slice(0,7),-3)+'-18',category:'Equipment',amount:650,note:'TENS / ultrasound unit',demo:true});
+  const txt=['Reports less stiffness in the morning. Manual therapy and core activation. Home: bird-dog 3×10, cat-camel.','Pain worse after long sitting. Soft tissue release, McKenzie extensions. Advised breaks every 45 min.','Good progress. Walking 30 min without pain. Progressed to bridges with band.','Range improving. Added resisted exercises. Review in 1 week.'];
+  ['demo-c0','demo-c1','demo-c2'].forEach((cid,ci)=>{const A=S.appts.filter(a=>a.clientId===cid&&a.status==='done').sort(byTime);
+    A.slice(-5).forEach((a,i)=>S.notes.push({id:'demo-n'+ci+i,clientId:cid,apptId:a.id,date:a.date,pain:Math.max(1,8-i-(ci%2)),text:txt[i%txt.length],demo:true}))});
+}
+function clearDemo(){const isD=x=>x.demo;S.clients=S.clients.filter(x=>!isD(x));S.appts=S.appts.filter(x=>!isD(x));S.expenses=S.expenses.filter(x=>!isD(x));S.notes=S.notes.filter(x=>!isD(x))}
+
+/* ================= welcome ================= */
+function welcome(){
+  openModal(`<div class="form"><span class="logo" style="width:48px;height:48px;border-radius:14px">${ic('pulse',26)}</span>
+    <div><h2 class="h1" style="font-size:25px">Welcome to PhysioDesk</h2><p class="muted" style="margin:6px 0 0">Your appointments, clients, treatment notes and income in one place. Everything stays on this phone and works without internet.</p></div>
+    <label class="fld"><span>Clinic name</span><input id="o-clinic" placeholder="e.g. Move Well Physio" value="${esc(S.settings.clinic)}"></label>
+    <div class="r2"><label class="fld"><span>Your name</span><input id="o-name" placeholder="e.g. Dr. Karim" value="${esc(S.settings.therapist)}"></label>
+    <label class="fld"><span>Currency</span><input id="o-cur" value="${esc(S.settings.currency)}" maxlength="4"></label></div>
+    <div class="sheet-actions" style="flex-wrap:wrap"><button class="btn ghost" data-act="onbStart" data-demo="1">Try it with sample data</button><button class="btn primary" data-act="onbStart">Start</button></div></div>`);
+}
+
+/* ================= boot ================= */
+applyTheme();
+render();
+if(S.settings.pinHash)lockNow();
+else if(!S.settings.onboarded&&!S.appts.length)welcome();
+setInterval(()=>{if(!stack.length&&route().tab!=='setup'&&!document.hidden&&document.activeElement?.tagName!=='INPUT')render()},60000);
+</script>
+</body>
+</html>
