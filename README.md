@@ -1,6 +1,6 @@
 # PhysioDesk: Android app for a physiotherapy practice
 
-PhysioDesk replaces the email calendar. It keeps the appointments, the clients' files, the treatment notes and the money in one app. It works offline, and everything stays on the phone.
+PhysioDesk replaces the email calendar. It keeps the appointments, the clients' files, the treatment notes and the money in one app, for the clinics you work at and for your own clients. It works offline, and the data stays on the phone.
 
 GitHub builds the APK for free in the cloud; nothing needs installing on a computer.
 
@@ -17,11 +17,21 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 * Repeating bookings: every week, twice a week, every 2 weeks, every day or every other day, for 2 to 20 sessions.
 * A warning when a booking overlaps another one.
 
+**Clinics**
+* Add each clinic you work at, with two numbers: the **%** it keeps from your own clients (for example 30%) and the **fixed amount** it pays you for each of its clients (for example $15).
+* Each booking says where it happens and whose client it is. The app works out the clinic's share and what you get: a $40 session with your own client gives the clinic $12 and you $28. A clinic's client gives you $15.
+* The dashboard and Money screen show your income after the clinics' share, split by clinic.
+
+**Phone calendar and reminders**
+* **Import from phone calendar** reads the appointments already in your Google calendar (last 12 months and next 12, repeating ones included) and adds them, with the clinic and service you pick. It never imports the same one twice.
+* **Add my sessions to the calendar automatically**: every session you book, move or cancel in PhysioDesk is updated in your Google calendar, so it also shows in Gmail and on your computer.
+* **Client reminders**: 1 hour before each session (or 30 min, 2 h, 3 h, or the evening before), the phone shows a notification. Tap it and WhatsApp opens with the reminder typed; tap send. WhatsApp doesn't let apps send messages by themselves, so this last tap is needed.
+
 **Each appointment**
 * Its status: booked, done, no-show or cancelled.
 * Paid or unpaid, and how: cash, card, bank transfer, wallet app or insurance.
 * **Price and cost per session**, so each session shows its own profit (cost covers things like transport for home visits, tape and consumables).
-* **WhatsApp reminder** in one tap, with the client's name, day and time already in the message. Also Call, Book again and Note.
+* **WhatsApp reminder** in one tap from the appointment too. Also Call, Book again and Note.
 
 **Clients**
 * A file for each client: phone, email, date of birth, condition, who referred them, address and medical notes.
@@ -35,10 +45,9 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 * **Export spreadsheet**: a CSV file with every session and expense, which opens in Excel or Google Sheets.
 
 **Settings**
-* Clinic name, currency, services and prices, working hours, 12- or 24-hour clock and the reminder message.
+* Your name, currency, clinics, services and prices, working hours, 12- or 24-hour clock and the reminder message.
 * **PIN lock**: the app asks for the PIN when it opens and after 3 minutes in the background.
 * **Backup and restore**: a backup file you can send to Google Drive, email or WhatsApp, and restore on a new phone.
-* **Import from Google Calendar or Outlook**: an `.ics` file brings the old appointments in. Each event title becomes the client's name.
 * Sample data to try the app with, which you can remove in one tap.
 
 ## Getting the APK
@@ -66,6 +75,15 @@ e email calendar
 4. Choose the service and price to use, and whether past appointments count as done and paid. Then tap **Import**.
 
 Appointments from the last 12 months and the next 12 months come in. Weekly repeating events are expanded into separate sessions. Importing the same file twice doesn't create duplicates.
+
+## Moving over from the email calendar
+
+1. Make sure the Gmail account is on the phone (phone **Settings → Accounts**) and its calendar syncs.
+2. In PhysioDesk open **Settings → Phone calendar → Import from phone calendar** and allow calendar access.
+3. Pick the calendar with your Gmail address, the clinic, whose clients they are and the service. Then tap **Import**.
+4. To keep the calendar up to date from now on, tick **Add my sessions to the calendar automatically** and pick the same calendar.
+
+No Gmail on the phone? On a computer, export the calendar from **calendar.google.com → ⚙ Settings → Import & export → Export**, send the `.ics` file to the phone and use **From a file (.ics)**.
 
 ## Keep a backup
 
