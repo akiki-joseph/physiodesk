@@ -24,6 +24,7 @@
   --ink:#0f1b2d; --ink-2:#1a2a47; --on-ink:#eef3ff; --ink-muted:#8f9fc2;
   --dial-track:#22345a; --dial-sched:#7e9cff; --dial-done:#4fd39a; --dial-noshow:#ff6f76; --dial-needle:#ff7a5c;
   --map-0:#dbe2ee; --map-1:#ffc94d; --map-2:#ff8a3d; --map-3:#e0383e;
+  --fig:#34425f; --fig-far:#a3afc8; --fig-line:#ffffff; --fig-tip:#4a5a7a; --fig-bg:#f3f6fb; --prop:#9aa6bd; --prop-soft:#dfe5ef; --band:#22a36f; --water:#4aa3df;
   --shadow:0 1px 2px rgb(15 27 45/.05),0 12px 32px rgb(15 27 45/.08);
   --f-display:"Bricolage Grotesque",Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --f-body:Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -36,6 +37,7 @@
   --ok:#4fd39a; --ok-soft:#10301f; --warn:#f0b04f; --warn-soft:#352711; --bad:#ff6f76; --bad-soft:#3b1519;
   --chart-a:#7393ff; --chart-b:#34456b; --chart-c:#ff7a5f;
   --ink:#060c17; --ink-2:#101c33; --map-0:#26344d;
+  --fig:#c9d5ee; --fig-far:#5d6c8c; --fig-line:#111b2b; --fig-tip:#aebcda; --fig-bg:#0f1828; --prop:#5c6b88; --prop-soft:#25324a; --band:#4fd39a; --water:#3d7fbf;
   --shadow:0 1px 2px rgb(0 0 0/.3),0 12px 32px rgb(0 0 0/.35); color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -45,6 +47,7 @@
   --ok:#4fd39a; --ok-soft:#10301f; --warn:#f0b04f; --warn-soft:#352711; --bad:#ff6f76; --bad-soft:#3b1519;
   --chart-a:#7393ff; --chart-b:#34456b; --chart-c:#ff7a5f;
   --ink:#060c17; --ink-2:#101c33; --map-0:#26344d;
+  --fig:#c9d5ee; --fig-far:#5d6c8c; --fig-line:#111b2b; --fig-tip:#aebcda; --fig-bg:#0f1828; --prop:#5c6b88; --prop-soft:#25324a; --band:#4fd39a; --water:#3d7fbf;
   --shadow:0 1px 2px rgb(0 0 0/.3),0 12px 32px rgb(0 0 0/.35); color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -308,6 +311,22 @@ a{color:var(--primary)}
 .ex input{width:96px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:7px 8px;font-size:14px}
 .lib{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:14px;padding:0 10px}
 
+/* ---------- animated exercise figures ---------- */
+.exthumb{width:76px;aspect-ratio:4/3;border-radius:12px;overflow:hidden;flex:none;background:var(--fig-bg);display:block}
+.exthumb svg,.exbig svg{width:100%;height:100%;display:block}
+.exnone{display:grid;place-items:center;color:var(--muted)}
+.exthumb-btn{border:0;padding:0;background:none;border-radius:12px;flex:none}
+.exbig{width:100%;aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:var(--fig-bg)}
+.exfig .mz{filter:drop-shadow(0 0 2.5px rgb(242 81 47/.55))}
+.prog .ex .info span{white-space:normal}
+.exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.excard{border:1px solid var(--line);border-radius:18px;background:var(--surface);overflow:hidden;text-align:left;padding:0;display:flex;flex-direction:column;min-width:0}
+.excard .exthumb{width:100%;border-radius:0}
+.excard div{padding:9px 11px 11px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.excard b{font-size:13.5px;line-height:1.25}
+.excard span{font-size:12px;color:var(--muted)}
+.lib .ex .exthumb{width:64px}
+
 /* ---------- modal sheet ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .scrim{position:absolute;inset:0;background:rgb(6 12 23/.55);opacity:0;transition:opacity .18s}
@@ -377,6 +396,8 @@ a{color:var(--primary)}
 <div id="lock-root"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="file-in" hidden>
+<script src="exercises.js"></script>
+<script src="anim.js"></script>
 <script>
 "use strict";
 /* ================= storage ================= */
@@ -537,7 +558,7 @@ window.addEventListener('hashchange',()=>{UI.histAll=false;if(route().tab==='cal
 function render(){
   const r=route();
   const tabs=[['today','home','Today'],['calendar','cal','Calendar'],['clients','users','Clients'],['money','wallet','Money'],['setup','gear','Settings']];
-  const active=r.tab==='client'?'clients':(tabs.some(t=>t[0]===r.tab)?r.tab:'today');
+  const active=r.tab==='client'||r.tab==='library'?'clients':(tabs.some(t=>t[0]===r.tab)?r.tab:'today');
   const link=([h,i,l])=>`<a href="#${h}" class="${active===h?'on':''}">${ic(i,21)}<span>${l}</span></a>`;
   let body;
   switch(r.tab){
@@ -546,6 +567,7 @@ function render(){
     case'client':body=viewClient(r.arg);break;
     case'money':body=viewMoney();break;
     case'setup':body=viewSettings();break;
+    case'library':body=viewLibrary();break;
     default:body=viewToday();
   }
   $('#app').innerHTML=`<nav class="nav" aria-label="Main">
@@ -556,6 +578,7 @@ function render(){
   </nav>
   <main class="main"><div class="wrap">${body}</div></main>`;
   if(r.tab==='calendar')mountCal();
+  if(window.PhysioAnim)PhysioAnim.watch($('#app'));
 }
 
 /* ---------- appointment row ---------- */
@@ -820,7 +843,7 @@ function calStep(n){
 /* ================= CLIENTS ================= */
 function viewClients(){
   return`<div class="page-head"><div><h1 class="h1">Clients</h1><div class="muted">${S.clients.length} on file</div></div>
-    <button class="btn primary" data-act="newClient">${ic('plus',16)} New client</button></div>
+    <div class="btn-row"><a class="btn" href="#library">${ic('move',16)} Exercise library</a><button class="btn primary" data-act="newClient">${ic('plus',16)} New client</button></div></div>
     <div class="search fld">${ic('search',18)}<input id="client-q" type="search" placeholder="Search by name, phone or condition" value="${esc(UI.q)}" data-input="clientSearch" autocomplete="off"></div>
     <section class="card" style="padding-block:6px"><div class="list" id="client-list">${clientList()}</div></section>`;
 }
@@ -986,9 +1009,9 @@ function openModal(html,mount){
   $('#modal-root').appendChild(el);const entry={el,after:null};stack.push(entry);document.body.classList.add('noscroll');
   if(useHistory)history.pushState({m:stack.length},'');
   requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('in')));
-  mount&&mount(el);return el;
+  mount&&mount(el);if(window.PhysioAnim)PhysioAnim.watch(el);return el;
 }
-function replaceModal(html,mount){const t=stack[stack.length-1];if(!t)return openModal(html,mount);const b=t.el.querySelector('.sheet-body');b.innerHTML=html;t.el.querySelector('.sheet').scrollTop=0;mount&&mount(t.el);return t.el}
+function replaceModal(html,mount){const t=stack[stack.length-1];if(!t)return openModal(html,mount);const b=t.el.querySelector('.sheet-body');b.innerHTML=html;t.el.querySelector('.sheet').scrollTop=0;mount&&mount(t.el);if(window.PhysioAnim)PhysioAnim.watch(t.el);return t.el}
 function finalize(){const t=stack.pop();if(!t)return;clearTimeout(t.timer);t.el.classList.remove('in');setTimeout(()=>t.el.remove(),200);if(!stack.length)document.body.classList.remove('noscroll');t.after&&t.after()}
 function closeModal(after){const t=stack[stack.length-1];if(!t){after&&after();return}t.after=after||null;
   if(useHistory){history.back();t.timer=setTimeout(()=>{if(stack[stack.length-1]===t){ignorePops++;finalize()}},450)}else finalize()}
@@ -1587,51 +1610,73 @@ ACT.mapTap=el=>{const c=mapClient();if(!c)return;c.map=c.map||{};const id=el.dat
 ACT.mapView=el=>{UI.mapView=el.dataset.v;redrawMap(mapClient())};
 ACT.mapClear=()=>{const c=mapClient();c.map={};c.mapAt=today();save();redrawMap(c);toast('Pain map cleared')};
 
-/* ================= home exercise programs ================= */
-const EX_LIB=[
- ['Neck','Chin tucks','3 × 10'],['Neck','Neck rotations','2 × 10 each side'],['Neck','Upper trapezius stretch','3 × 30 s'],['Neck','Shoulder blade squeezes','3 × 12'],
- ['Shoulder','Pendulum swings','3 × 30 s'],['Shoulder','Wall slides','3 × 10'],['Shoulder','External rotation with band','3 × 12'],['Shoulder','Internal rotation with band','3 × 12'],
- ['Shoulder','Sleeper stretch','3 × 30 s'],['Shoulder','Wall push-ups','3 × 10'],['Shoulder','Towel stretch behind back','3 × 30 s'],
- ['Back','Cat–camel','2 × 10'],['Back','Bird-dog','3 × 10 each side'],['Back','Glute bridges','3 × 12'],['Back','Knee-to-chest stretch','3 × 30 s'],
- ['Back','Prone press-ups (McKenzie)','3 × 10'],['Back','Dead bug','3 × 10'],['Back','Side plank','3 × 20 s'],['Back',"Child's pose",'3 × 30 s'],['Back','Pelvic tilts','3 × 15'],
- ['Hip & knee','Clamshells','3 × 15'],['Hip & knee','Straight leg raise','3 × 10'],['Hip & knee','Quad sets','3 × 10, hold 5 s'],['Hip & knee','Mini squats','3 × 12'],
- ['Hip & knee','Step-ups','3 × 10'],['Hip & knee','Hamstring stretch','3 × 30 s'],['Hip & knee','Hip flexor stretch','3 × 30 s'],['Hip & knee','Terminal knee extension','3 × 15'],
- ['Hip & knee','Heel slides','3 × 10'],['Hip & knee','Side-lying leg raise','3 × 12'],
- ['Ankle & foot','Ankle alphabet','2 rounds'],['Ankle & foot','Calf raises','3 × 15'],['Ankle & foot','Towel scrunches','3 × 20'],['Ankle & foot','Single-leg balance','3 × 30 s'],
- ['Ankle & foot','Calf stretch on wall','3 × 30 s'],['Ankle & foot','Rolling the sole on a ball','2 × 60 s'],
- ['Elbow & wrist','Wrist extensor stretch','3 × 30 s'],['Elbow & wrist','Eccentric wrist extension','3 × 15'],['Elbow & wrist','Grip squeeze with ball','3 × 15'],['Elbow & wrist','Wrist flexor stretch','3 × 30 s']];
-const EX_FREQ=['Every day','Twice a day','3 times a day','Every other day','3 times a week'];
-let PROG=null;
+/* ================= exercise catalogue + home programs ================= */
+const EXA=window.EX_ALL||[],EXC=window.EX_CATS||[];
+const EXN={};for(const r of EXA)EXN[r[0]]=r;
+const EX_DOSE='3 × 12';
+const exAnim=n=>EXN[n]?EXN[n][5]:'';
+const thumb=(n,cls='exthumb')=>EXN[n]?`<span class="${cls}" data-anim="${EXN[n][5]}" data-off="${(n*397)%3200}"></span>`:`<span class="${cls} exnone">${ic('move',22)}</span>`;
+const exLabels=r=>(r[4].includes('S')?`<span class="badge b-unpaid">Needs supervision</span>`:'')+(r[4].includes('A')?`<span class="badge b-noshow">Advanced stage</span>`:'');
+function exFind(name){const k=String(name||'').toLowerCase();return EXA.find(r=>r[2].toLowerCase()===k)}
 function progText(c){const p=c.program||{items:[]},first=(c.name||'').split(' ')[0];
-  return`Home exercises for ${first}\nHow often: ${p.freq||'Every day'}\n\n${p.items.map((x,i)=>`${i+1}. ${x.name}: ${x.dose}`).join('\n')}${p.note?`\n\n${p.note}`:''}\n\nStop any exercise that causes sharp pain and tell me.${S.settings.therapist?`\n${S.settings.therapist}`:''}`}
+  return`Home exercises for ${first}\nHow often: ${p.freq||'Every day'}\n\n${p.items.map((x,i)=>{const r=EXN[x.n];return`${i+1}. ${x.name}: ${x.dose||EX_DOSE}${r?`\n   ${r[3]}`:''}`}).join('\n')}${p.note?`\n\n${p.note}`:''}\n\nStop any exercise that causes sharp pain and tell me.${S.settings.therapist?`\n${S.settings.therapist}`:''}`}
+function exDetail(n,canAdd){const r=EXN[n];if(!r)return'';
+  return`<div class="form"><div class="card-head" style="margin:0"><div><div class="eyebrow">#${r[0]} · ${esc(EXC[r[1]])}</div><h2 class="h2">${esc(r[2])}</h2></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+    <div class="exbig" data-anim="${r[5]}"></div>
+    <p style="margin:0;font-size:15.5px">${esc(r[3])}</p>
+    <div class="btn-row"><span class="badge b-sched">${EX_DOSE.replace('×','sets ×')} reps</span>${exLabels(r)}</div>
+    <p class="hint">The coral areas are the muscles doing the work. The figure shows the movement pattern; adjust range, support and load to the client.</p>
+    ${canAdd?`<div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Back</button><button type="button" class="btn primary" data-act="exAddDetail" data-n="${r[0]}" ${PROG&&PROG.items.some(x=>x.n===r[0])?'disabled':''}>${ic('plus',16)} ${PROG&&PROG.items.some(x=>x.n===r[0])?'In the program':'Add to program'}</button></div>`:''}</div>`}
+ACT.exInfo=el=>openModal(exDetail(+el.dataset.n,!!el.dataset.add),m=>PhysioAnim.watch(m));
+ACT.exAddDetail=el=>{const r=EXN[+el.dataset.n];PROG.items.push({n:r[0],name:r[2],dose:EX_DOSE});closeModal(()=>{progRefresh();toast(r[2]+' added')})};
 function programCard(c){
   const p=c.program;
-  if(!p||!p.items.length)return`<section class="card"><div class="card-head"><div><h2 class="h2">Home exercises</h2><div class="muted small">Build a program from ${EX_LIB.length} common exercises and send it on WhatsApp</div></div><button class="btn sm soft" data-act="editProg" data-id="${c.id}">${ic('plus',14)} Create</button></div></section>`;
+  if(!p||!p.items.length)return`<section class="card"><div class="card-head"><div><h2 class="h2">Home exercises</h2><div class="muted small">Build a program from ${EXA.length} animated exercises and send it on WhatsApp</div></div><button class="btn sm soft" data-act="editProg" data-id="${c.id}">${ic('plus',14)} Create</button></div></section>`;
   return`<section class="card"><div class="card-head"><div><h2 class="h2">Home exercises</h2><div class="muted small">${esc(p.freq||'Every day')} · updated ${esc(fmtD(p.at||today(),{day:'numeric',month:'short'}))}</div></div><button class="btn sm" data-act="editProg" data-id="${c.id}">${ic('edit',14)} Edit</button></div>
-    <div>${p.items.map((x,i)=>`<div class="ex"><span class="n">${i+1}</span><div class="info"><b>${esc(x.name)}</b><span>${esc(x.dose)}</span></div></div>`).join('')}</div>
+    <div class="prog">${p.items.map((x,i)=>`<div class="ex"><button type="button" class="exthumb-btn" ${x.n?`data-act="exInfo" data-n="${x.n}"`:''} aria-label="Show ${esc(x.name)}">${thumb(x.n)}</button><div class="info"><b>${i+1}. ${esc(x.name)}</b><span>${esc(x.dose||EX_DOSE)}${EXN[x.n]?' · '+esc(EXN[x.n][3]):''}</span></div></div>`).join('')}</div>
     ${p.note?`<p class="hint" style="margin-top:8px;white-space:pre-wrap">${esc(p.note)}</p>`:''}
     ${c.phone?`<a class="btn soft block" style="margin-top:12px" href="${waHref(c.phone,progText(c))}" data-ext target="_blank" rel="noopener">${ic('chat',16)} Send on WhatsApp</a>`:''}</section>`;
 }
-function progItemsHtml(){return PROG.items.length?PROG.items.map((x,i)=>`<div class="ex"><span class="n">${i+1}</span><div class="info"><b>${esc(x.name)}</b></div><input value="${esc(x.dose)}" data-input="progDose" data-i="${i}" aria-label="Sets and reps for ${esc(x.name)}"><button type="button" class="btn sm ghost icon" data-act="progDel" data-i="${i}" aria-label="Remove ${esc(x.name)}">${ic('x',15)}</button></div>`).join(''):`<p class="muted small" style="margin:0">No exercises yet. Add them from the list below.</p>`}
-function progLibHtml(){const has=new Set(PROG.items.map(x=>x.name));
-  return EX_LIB.filter(e=>PROG.region==='All'||e[0]===PROG.region).map(([r,n,d])=>`<div class="ex"><div class="info"><b>${esc(n)}</b><span>${esc(r)} · ${esc(d)}</span></div>${has.has(n)?`<span class="muted small">${ic('check',16)}</span>`:`<button type="button" class="btn sm soft icon" data-act="progAdd" data-name="${esc(n)}" data-dose="${esc(d)}" aria-label="Add ${esc(n)}">${ic('plus',15)}</button>`}</div>`).join('')}
-function progRefresh(){$('#prog-items').innerHTML=progItemsHtml();$('#prog-lib').innerHTML=progLibHtml();$('#prog-regions').innerHTML=['All',...new Set(EX_LIB.map(e=>e[0]))].map(r=>`<button type="button" data-act="progRegion" data-v="${esc(r)}" class="${PROG.region===r?'on':''}">${esc(r)}</button>`).join('')}
-ACT.editProg=el=>{const c=getClient(el.dataset.id);const p=c.program||{};PROG={cid:c.id,items:(p.items||[]).map(x=>({...x})),freq:p.freq||'Every day',note:p.note||'',region:'All'};
+function progItemsHtml(){return PROG.items.length?PROG.items.map((x,i)=>`<div class="ex">${thumb(x.n)}<div class="info"><b>${esc(x.name)}</b>${x.n?`<span>#${x.n}</span>`:''}</div><input value="${esc(x.dose||EX_DOSE)}" data-input="progDose" data-i="${i}" aria-label="Sets and reps for ${esc(x.name)}"><button type="button" class="btn sm ghost icon" data-act="progDel" data-i="${i}" aria-label="Remove ${esc(x.name)}">${ic('x',15)}</button></div>`).join(''):`<p class="muted small" style="margin:0">No exercises yet. Pick a body area or search below.</p>`}
+function exMatches(cat,q){q=String(q||'').trim().toLowerCase();return EXA.filter(r=>(q?(r[2].toLowerCase().includes(q)||r[3].toLowerCase().includes(q)||String(r[0])===q):true)&&(q&&cat==='all'?true:cat==='all'?false:r[1]===+cat))}
+function progLibHtml(){const has=new Set(PROG.items.map(x=>x.n));const L=exMatches(PROG.cat,PROG.q);
+  if(!L.length)return`<p class="muted small" style="padding:12px 0;margin:0">${PROG.q?'No exercise matches that search.':'Pick a body area or type a name.'}</p>`;
+  return L.slice(0,60).map(r=>`<div class="ex"><button type="button" class="exthumb-btn" data-act="exInfo" data-n="${r[0]}" data-add="1" aria-label="Show ${esc(r[2])}">${thumb(r[0])}</button><div class="info"><b>${esc(r[2])}</b><span>#${r[0]}${r[4]?' · '+(r[4].includes('S')?'needs supervision':'advanced'):''}</span></div>${has.has(r[0])?`<span class="muted small">${ic('check',16)}</span>`:`<button type="button" class="btn sm soft icon" data-act="progAdd" data-n="${r[0]}" aria-label="Add ${esc(r[2])}">${ic('plus',15)}</button>`}</div>`).join('')+(L.length>60?`<p class="hint" style="padding:8px 0">${L.length-60} more. Narrow the search to see them.</p>`:'')}
+function progRefresh(){const m=$('#prog-items');if(!m)return;m.innerHTML=progItemsHtml();$('#prog-lib').innerHTML=progLibHtml();const sh=stack[stack.length-1];PhysioAnim.watch(sh?sh.el:document)}
+ACT.editProg=el=>{const c=getClient(el.dataset.id);const p=c.program||{};PROG={cid:c.id,items:(p.items||[]).map(x=>({...x})),freq:p.freq||'Every day',note:p.note||'',cat:String(UI.exCat??0),q:''};
   openModal(`<div class="form"><div class="card-head" style="margin:0"><div><h2 class="h2">Home exercises</h2><div class="muted small">${esc(c.name)}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
     <div id="prog-items"></div>
-    <label class="fld"><span>How often</span><select id="prog-freq">${EX_FREQ.map(f=>`<option ${PROG.freq===f?'selected':''}>${f}</option>`).join('')}</select></label>
-    <label class="fld"><span>Advice for the client <i>(optional)</i></span><textarea id="prog-note" rows="2" placeholder="e.g. Ice 15 min after the exercises">${esc(PROG.note)}</textarea></label>
-    <div class="eyebrow" style="margin-top:4px">Add exercises</div>
-    <div class="chips" id="prog-regions"></div>
+    <div class="r2"><label class="fld"><span>How often</span><select id="prog-freq">${EX_FREQ.map(f=>`<option ${PROG.freq===f?'selected':''}>${f}</option>`).join('')}</select></label>
+    <label class="fld"><span>Advice <i>(optional)</i></span><input id="prog-note" value="${esc(PROG.note)}" placeholder="e.g. Ice 15 min after"></label></div>
+    <div class="eyebrow" style="margin-top:4px">Add from the catalogue · ${EXA.length} exercises</div>
+    <div class="r2"><label class="fld"><span>Body area</span><select id="prog-cat" data-change="progCat"><option value="all">All areas (search)</option>${EXC.map((n,i)=>`<option value="${i}" ${PROG.cat===String(i)?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
+    <label class="fld"><span>Search</span><input id="prog-q" type="search" placeholder="e.g. bridge, calf" data-input="progQ" autocomplete="off"></label></div>
     <div class="lib" id="prog-lib"></div>
     <div class="r2" style="align-items:end"><label class="fld"><span>Your own exercise</span><input id="prog-custom" placeholder="e.g. Foam roller, IT band"></label><button type="button" class="btn" data-act="progCustom">${ic('plus',15)} Add</button></div>
     <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button type="button" class="btn primary" data-act="progSave">${ic('check',16)} Save</button></div></div>`,progRefresh)};
-ACT.progRegion=el=>{PROG.region=el.dataset.v;progRefresh()};
-ACT.progAdd=el=>{PROG.items.push({name:el.dataset.name,dose:el.dataset.dose});progRefresh()};
+CHANGE.progCat=el=>{PROG.cat=el.value;if(el.value!=='all')UI.exCat=+el.value;$('#prog-lib').innerHTML=progLibHtml();PhysioAnim.watch($('#prog-lib'))};
+INPUT.progQ=el=>{PROG.q=el.value;if(el.value.trim()&&PROG.cat!=='all'){PROG.cat='all';$('#prog-cat').value='all'}$('#prog-lib').innerHTML=progLibHtml();PhysioAnim.watch($('#prog-lib'))};
+ACT.progAdd=el=>{const r=EXN[+el.dataset.n];PROG.items.push({n:r[0],name:r[2],dose:EX_DOSE});progRefresh()};
 ACT.progDel=el=>{PROG.items.splice(+el.dataset.i,1);progRefresh()};
-ACT.progCustom=()=>{const v=$('#prog-custom').value.trim();if(!v){toast('Type the exercise name');return}PROG.items.push({name:v,dose:'3 × 10'});$('#prog-custom').value='';progRefresh()};
+ACT.progCustom=()=>{const v=$('#prog-custom').value.trim();if(!v){toast('Type the exercise name');return}const r=exFind(v);PROG.items.push(r?{n:r[0],name:r[2],dose:EX_DOSE}:{name:v,dose:EX_DOSE});$('#prog-custom').value='';progRefresh()};
 ACT.progSave=()=>{const c=getClient(PROG.cid);c.program={items:PROG.items.filter(x=>x.name),freq:$('#prog-freq').value,note:$('#prog-note').value.trim(),at:today()};save();closeModal();render();toast(c.program.items.length?'Program saved':'Program cleared')};
 INPUT.progDose=el=>{PROG.items[+el.dataset.i].dose=el.value};
+const EX_FREQ=['Every day','Twice a day','3 times a day','Every other day','3 times a week'];
+let PROG=null;
+
+/* ---------- exercise library page ---------- */
+function viewLibrary(){
+  const cat=UI.libCat??'0',q=UI.libQ||'';const L=exMatches(cat,q);
+  return`<a class="back" href="#clients">${ic('left',16)} Clients</a>
+  <div class="page-head"><div><h1 class="h1">Exercise library</h1><div class="muted">${EXA.length} rehabilitation exercises in ${EXC.length} areas, each with its movement shown. Default dose ${EX_DOSE}.</div></div></div>
+  <div class="r2"><label class="fld"><span>Body area</span><select id="lib-cat" data-change="libCat"><option value="all" ${cat==='all'?'selected':''}>All areas (search)</option>${EXC.map((n,i)=>`<option value="${i}" ${String(cat)===String(i)?'selected':''}>${String(i+1).padStart(2,'0')} · ${esc(n)}</option>`).join('')}</select></label>
+  <label class="fld search"><span>Search</span><input id="lib-q" type="search" value="${esc(q)}" placeholder="e.g. heel raise" data-input="libQ" autocomplete="off"></label></div>
+  <div class="exgrid" id="lib-grid">${libGrid(L)}</div>`;
+}
+function libGrid(L){if(!L.length)return`<p class="muted">No exercise matches that search.</p>`;
+  return L.slice(0,100).map(r=>`<button class="excard" data-act="exInfo" data-n="${r[0]}">${thumb(r[0])}<div><b>${esc(r[2])}</b><span>#${r[0]}${r[4]?` · ${r[4].includes('S')?'supervised':'advanced'}`:''}</span></div></button>`).join('')}
+CHANGE.libCat=el=>{UI.libCat=el.value;UI.libQ='';render()};
+INPUT.libQ=el=>{UI.libQ=el.value;if(el.value.trim())UI.libCat='all';const g=$('#lib-grid');g.innerHTML=libGrid(exMatches(UI.libCat??'0',UI.libQ));PhysioAnim.watch(g);const s=$('#lib-cat');if(s)s.value=UI.libCat};
 
 /* ================= phone calendar + reminder notifications (installed app only) ================= */
 const CALP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioCalendar;
@@ -1790,7 +1835,7 @@ function loadDemo(){
   S.appts=S.appts.filter(a=>!(a.clientId==='demo-c11'&&a.date>addDays(t,-26)));
   const maya=cl.find(c=>c.id==='demo-c1');if(maya)maya.dob='1991-'+t.slice(5);
   const rami=cl.find(c=>c.id==='demo-c0');if(rami){rami.map={'b-abdomen':3,'b-hip-R':2,'b-thigh-R':1};rami.mapAt=addDays(t,-3);
-    rami.program={items:[{name:'Cat–camel',dose:'2 × 10'},{name:'Bird-dog',dose:'3 × 10 each side'},{name:'Glute bridges',dose:'3 × 12'},{name:'Knee-to-chest stretch',dose:'3 × 30 s'}],freq:'Twice a day',note:'Walk 20 minutes a day. Avoid sitting more than 45 minutes in a row.',at:addDays(t,-3)}}
+    rami.program={items:[47,72,224,45].map(n=>({n,name:(window.EX_ALL||[]).find(r=>r[0]===n)?.[2]||'Exercise',dose:'3 × 12'})),freq:'Twice a day',note:'Walk 20 minutes a day. Avoid sitting more than 45 minutes in a row.',at:addDays(t,-3)}}
   const txt=['Reports less stiffness in the morning. Manual therapy and core activation. Home: bird-dog 3×10, cat-camel.','Pain worse after long sitting. Soft tissue release, McKenzie extensions. Advised breaks every 45 min.','Good progress. Walking 30 min without pain. Progressed to bridges with band.','Range improving. Added resisted exercises. Review in 1 week.'];
   ['demo-c0','demo-c1','demo-c2'].forEach((cid,ci)=>{const A=S.appts.filter(a=>a.clientId===cid&&a.status==='done').sort(byTime);
     A.slice(-5).forEach((a,i)=>S.notes.push({id:'demo-n'+ci+i,clientId:cid,apptId:a.id,date:a.date,pain:Math.max(1,8-i-(ci%2)),text:txt[i%txt.length],demo:true}))});
