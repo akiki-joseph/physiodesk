@@ -15,8 +15,8 @@ const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 const fx=n=>(+n).toFixed(1);
 
 /* ---------- base poses ---------- */
-const SIDE={T:180,H:180,hx:0,cv:0,uN:4,fN:6,hN:0,uF:-4,fF:-2,hF:0,tN:0,sN:0,pN:90,kN:0,tF:0,sF:0,pF:90,kF:0,X:0,Y:0,pr:0,belly:0,sh:0};
-const FRONT={T:180,N:0,hr:0,ts:1,sw:1,tw:0,uL:8,fL:6,uR:8,fR:6,fsL:1,fsR:1,tL:4,sL:2,tR:4,sR:2,lsL:1,lsR:1,ssL:1,ssR:1,pL:0,pR:0,rot:0,X:0,Y:0,sh:0,pt:0,belly:0};
+const SIDE={jaw:null,T:180,H:180,hx:0,cv:0,uN:4,fN:6,hN:0,uF:-4,fF:-2,hF:0,tN:0,sN:0,pN:90,kN:0,tF:0,sF:0,pF:90,kF:0,X:0,Y:0,pr:0,belly:0,sh:0};
+const FRONT={jaw:null,jx:0,T:180,N:0,hr:0,ts:1,sw:1,tw:0,uL:8,fL:6,uR:8,fR:6,fsL:1,fsR:1,tL:4,sL:2,tR:4,sR:2,lsL:1,lsR:1,ssL:1,ssR:1,pL:0,pR:0,rot:0,X:0,Y:0,sh:0,pt:0,belly:0};
 const P={
  stand:{},
  sit:{T:180,uN:20,fN:80,uF:16,fF:78,tN:90,sN:0,tF:90,sF:2},
@@ -525,6 +525,51 @@ def('pfChild',{fn:p=>S(P.quad,{tN:130,tF:126,T:98,H:100,uN:100,fN:100,uF:96,fF:9
 def('pfLift',{k:[S(P.squat,{uN:10,fN:10,uF:6,fF:6}),S({uN:8,fN:8,uF:4,fF:4})],on:['feet'],props:['boxHands'],hl:['pelvic','glute']});
 def('pfCough',{fn:p=>S(P.sitTall,{H:180-8*Math.max(0,Math.sin(p*2*Math.PI))}),on:['seat'],props:['chair','puff'],hl:['pelvic'],cyc:true});
 
+// jaw (TMJ)
+def('jawOpen',{k:[S(P.sitTall,{jaw:0}),S(P.sitTall,{jaw:28})],on:['seat'],props:['chair'],hl:['jaw'],z:'head'});
+def('jawOpenTongue',{k:[S(P.sitTall,{jaw:0}),S(P.sitTall,{jaw:16})],on:['seat'],props:['chair'],hl:['jaw'],z:'head'});
+def('jawSide',{v:'f',k:[{jaw:4,jx:-4},{jaw:4,jx:4}],on:['seat'],props:['stool'],hl:['jaw'],z:'head'});
+def('jawProtrude',{k:[S(P.sitTall,{jaw:2,hx:0}),S(P.sitTall,{jaw:-6})],on:['seat'],props:['chair'],hl:['jaw'],z:'head'});
+def('jawIso',{k:[S(P.sitTall,{jaw:6,uN:110,fN:190}),S(P.sitTall,{jaw:7,uN:110,fN:190})],on:['seat'],props:['chair'],hl:['jaw'],pulse:true,z:'head'});
+def('jawRelax',{fn:p=>S(P.sitTall,{jaw:5+3*Math.sin(p*2*Math.PI),belly:2*Math.sin(p*2*Math.PI)}),on:['seat'],props:['chair','breath'],hl:['jaw'],z:'head',cyc:true});
+
+// vestibular
+def('gazeH',{v:'f',fn:p=>S(FP.sit,{hr:.9*Math.sin(p*2*Math.PI),uL:60,fL:150,fsL:.5}),on:['seat'],props:['stool','gazeCard'],hl:['neck'],z:'head',cyc:true});
+def('gazeV',{fn:p=>S(P.sitTall,{H:180-16*Math.sin(p*2*Math.PI),uN:80,fN:90}),on:['seat'],props:['chair','gazeCard'],hl:['neck'],z:'head',cyc:true});
+def('gazeHStand',{v:'f',fn:p=>({hr:.9*Math.sin(p*2*Math.PI),tL:1,tR:1}),on:['feet'],props:['gazeCard'],hl:['neck'],cyc:true});
+def('eyeTrack',{v:'f',fn:p=>S(FP.sit,{}),on:['seat'],props:['stool','gazeCard'],hl:[],z:'head',cyc:true,move:true});
+def('bendUp',{k:[S(P.sit),S(P.sit,{T:110,H:90,uN:10,fN:0})],on:['seat'],props:['chair'],hl:['neck','lowback']});
+def('rollSide',{v:'f',k:[{rot:-90},{rot:-90,sw:.45,uL:-60,fL:-80,tL:-14,lsL:.7,hr:.8}],on:['body'],props:['mat'],hl:['neck']});
+def('brandt',{k:[S(P.sit,{uN:0,fN:0,hN:90}),S(P.supine,{tN:90,sN:0,tF:90,sF:0,H:-80})],on:['seat'],props:['bed'],hl:['neck']});
+
+// nerve mobility
+def('nMedian',{v:'f',k:[{uL:80,fL:110,uR:6},{uL:90,fL:90,uR:6,N:-20}],on:['feet'],hl:['shL','neck']});
+def('nUlnar',{v:'f',k:[{uL:80,fL:90,uR:6},{uL:95,fL:205,uR:6,N:-14}],on:['feet'],hl:['shL']});
+def('nRadial',{v:'f',k:[{uL:10,fL:10,uR:6},{uL:30,fL:30,uR:6,N:-18,sh:-2}],on:['feet'],hl:['shL']});
+def('slump',{k:[S(P.sit,{T:160,H:140,cv:-5,uN:-20,fN:-60}),S(P.sit,{T:160,H:170,cv:-5,sN:82,pN:200,uN:-20,fN:-60})],on:['seat'],props:['chair'],hl:['ham','neck']});
+def('sciaticSup',{k:[S(P.supine,{tN:160,sN:110,pN:170,uN:150,fN:200}),S(P.supine,{tN:160,sN:160,pN:250,uN:150,fN:200})],on:['back',['footF',0]],props:['mat'],hl:['ham']});
+def('femoralSide',{v:'f',k:[{rot:-90,lsL:1,ssL:.4,tL:0},{rot:-90,lsL:1,ssL:.4,tL:-16}],on:['body'],props:['mat'],hl:['quad']});
+
+// gym and free weights
+def('benchPress',{k:[S(P.hook,{uN:200,fN:120,uF:196,fF:116}),S(P.hook,{uN:180,fN:180,uF:176,fF:176})],on:['back','feet'],props:['benchFlat','barbell'],hl:['chest','tricep']});
+def('chestPressSit',{k:[S(P.sitTall,{uN:-40,fN:90,uF:-44,fF:86}),S(P.sitTall,{uN:88,fN:90,uF:84,fF:86})],on:['seat'],props:['chair'],hl:['chest','tricep']});
+def('latPull',{v:'f',k:[S(FP.sit,{uL:165,fL:170,uR:165,fR:170}),S(FP.sit,{uL:80,fL:175,uR:80,fR:175})],on:['seat'],props:['stool','pulldown'],hl:['back']});
+def('seatRow',{k:[S(P.sitLong,{uN:90,fN:90,uF:86,fF:86,T:178,sN:80,sF:80}),S(P.sitLong,{uN:-30,fN:80,uF:-34,fF:76,T:184,sN:80,sF:80})],on:['seat'],props:['bandFront'],hl:['back']});
+def('deadlift',{k:[S({T:120,H:120,tN:58,sN:-30,tF:56,sF:-32,uN:10,fN:10,uF:6,fF:6}),S({uN:4,fN:4,uF:0,fF:0})],on:['feet'],props:['barbell'],hl:['ham','glute','lowback']});
+def('swing',{k:[S({T:110,H:112,tN:30,sN:-18,tF:28,sF:-20,uN:-30,fN:-30,uF:-34,fF:-34}),S({uN:90,fN:90,uF:86,fF:86})],on:['feet'],props:['kb'],hl:['glute','ham']});
+def('hipThrust',{k:[S(P.hook,{T:-110,H:-110}),S(P.bridge,{T:-92,H:-110,tN:96,sN:20,tF:94,sF:22})],on:[['back',30],'feet'],props:['bench','barbell'],hl:['glute']});
+def('bentRow',{k:[S({T:110,H:110,tN:22,sN:-12,tF:20,sF:-14,uN:0,fN:0,uF:-4,fF:-4}),S({T:110,H:110,tN:22,sN:-12,tF:20,sF:-14,uN:-60,fN:0,uF:-64,fF:-4})],on:['feet'],props:['barbell'],hl:['back']});
+def('legExtMachine',{k:[S(P.sit),S(P.sit,{sN:88,pN:170,sF:88,pF:170})],on:['seat'],props:['chair','weightKnee'],hl:['quad']});
+def('tuckJump',{k:[S(),S(P.squat,{uN:-30,fN:-30}),S({tN:100,sN:-20,tF:96,sF:-22,Y:-34,uN:80,fN:80}),S(P.squat,{T:160,tN:50,sN:-20,tF:48,sF:-22})],on:['feet'],hl:['quad','glute','calf']});
+def('boxJumpUp',{k:[S(),S(P.squat,{uN:-30,fN:-30}),S({tN:70,sN:-10,tF:68,sF:-12,Y:-36,X:18,uN:120,fN:120}),S(P.squat,{T:160,tN:60,sN:-20,tF:58,sF:-22,Y:-30,X:30,uN:70,fN:80})],on:['feet'],props:['boxJump'],hl:['quad','glute']});
+
+// spine extras and stretches
+def('sideGlide',{v:'f',k:[{uL:20,fL:-60,uR:6},{uL:20,fL:-60,uR:6,X:6,T:186}],on:['feet'],props:['wallR'],hl:['lowback']});
+def('quadStretch',{k:[S({uN:40,fN:60}),S({uN:-30,fN:-60,tN:-6,sN:-160,pN:-70,uF:40,fF:60})],on:['footF'],props:['chairFront'],hl:['quad'],hold:true});
+def('tricepStretch',{v:'f',k:[{},{uL:170,fL:330,fsL:.9,uR:150,fR:240}],on:['feet'],hl:['shL'],hold:true});
+def('sitReach',{k:[S(P.sitLong),S(P.sitLong,{T:118,H:110,uN:80,fN:80,uF:76,fF:76})],on:['seat'],props:['mat'],hl:['ham','lowback'],hold:true});
+def('chestStretchBehind',{k:[S({uN:-20,fN:-20,uF:-24,fF:-24}),S({uN:-50,fN:-50,uF:-54,fF:-54,T:184,H:186})],on:['feet'],hl:['chest'],hold:true});
+
 /* ---------- hand close-up ----------
    Palm faces the viewer, fingers up. Each finger has three joint angles (knuckle, middle, end)
    bending toward the viewer, drawn by projection so a bent finger shortens and folds over the palm. */
@@ -668,6 +713,8 @@ function drawSide(J,P,hl,pulse){
   // neck + head
   g+=seg(add(J.neck,J.td,-4),add(J.neck,J.hd,6),W_.neck,hc('neck',C));
   g+=`<circle cx="${fx(J.head[0])}" cy="${fx(J.head[1])}" r="10.5" fill="${C}"/>`;
+  if(P.jaw!=null){const hinge=add(add(J.head,J.hd,-3),J.hf,1);const a=Math.atan2(J.hf[1],J.hf[0])+(25+P.jaw)*RAD*(J.hf[0]>=0?1:-1);const e=[hinge[0]+11*Math.cos(a),hinge[1]+11*Math.sin(a)];
+    g+=seg(hinge,e,6,on('jaw')?H:C,on('jaw')?'mz':'')}
   g+=`<circle cx="${fx(J.nose[0]-J.hf[0]*3+J.hd[0]*2)}" cy="${fx(J.nose[1]-J.hf[1]*3+J.hd[1]*2)}" r="1.6" fill="var(--fig-line)"/>`;
   g+=`<path d="M${fx(J.nose[0]-J.hf[0]*1)} ${fx(J.nose[1]-J.hf[1]*1)} l${fx(J.hf[0]*2.5-J.hd[0]*2)} ${fx(J.hf[1]*2.5-J.hd[1]*2)}" stroke="${C}" stroke-width="4" stroke-linecap="round"/>`;
   // near leg
@@ -708,6 +755,7 @@ function drawFront(J,P,hl,pulse){
   g+=arm('R')+arm('L');
   g+=seg(J.neck,add(J.neck,J.hd,-6),W_.neck,on('neck')?H:C,on('neck')?'mz':'');
   g+=`<circle cx="${fx(J.head[0])}" cy="${fx(J.head[1])}" r="11" fill="${C}"/>`;
+  if(P.jaw!=null){const cx=J.head[0]+(P.jx||0),cy=J.head[1]+8+P.jaw*.12;g+=`<ellipse cx="${fx(cx)}" cy="${fx(cy)}" rx="7" ry="4" fill="${on('jaw')?H:C}" class="${on('jaw')?'mz':''}"/>`}
   const nx=add(J.head,J.hpr,(P.hr||0)*7.5);
   g+=`<line x1="${fx(nx[0])}" y1="${fx(nx[1]-1)}" x2="${fx(nx[0]+J.hd[0]*4)}" y2="${fx(nx[1]+J.hd[1]*4)}" stroke="var(--fig-line)" stroke-width="2" stroke-linecap="round"/>`;
   if(P.eyes)g+=`<line x1="${fx(J.head[0]-5)}" y1="${fx(J.head[1]-2)}" x2="${fx(J.head[0]+5)}" y2="${fx(J.head[1]-2)}" stroke="var(--fig-line)" stroke-width="1.6"/>`;
@@ -715,7 +763,8 @@ function drawFront(J,P,hl,pulse){
 }
 
 /* ---------- props ---------- */
-function props(list,J0,J,P,view,p,box){
+let L_TGT={};
+function props(list,J0,J,P,view,p,box,m){L_TGT=m||{};
   let back='',front='';const F=FLOOR,pr='var(--prop)',ps='var(--prop-soft)';
   const at=k=>J0[k]||[0,0];
   for(const n of list){
@@ -743,6 +792,11 @@ function props(list,J0,J,P,view,p,box){
       case'box':case'box2':case'boxHands':{const x=n==='box2'?J0.toN[0]-40:(J.haN?J.haN[0]-10:0);const h=n==='box2'?18:22;back+=`<rect x="${fx(x)}" y="${F-h}" width="28" height="${h}" rx="3" fill="${ps}" stroke="${pr}"/>`;break}
       case'hurdle':case'hurdles':{const xs=n==='hurdle'?[J0.toN[0]+10]:[box[0]+10,box[2]-20];for(const x0 of xs){const x=n==='hurdles'?((x0-p*80-box[0])%(box[2]-box[0])+box[0]+(box[2]-box[0]))%(box[2]-box[0])+box[0]:x0;back+=`<path d="M${fx(x)} ${F} L${fx(x)} ${F-16} L${fx(x+18)} ${F-16} L${fx(x+18)} ${F}" fill="none" stroke="var(--accent)" stroke-width="3"/>`}break}
       case'coneFront':back+=`<path d="M${fx(J0.toN[0]+24)} ${F} l7 -16 l7 16 Z" fill="var(--accent)"/>`;break;
+      case'gazeCard':{const h=J.head||J0.head;const x=(view==='f'?h[0]+34:h[0]+40)+(L_TGT.move?12*Math.sin(p*2*Math.PI):0);front+=`<rect x="${fx(x-6)}" y="${fx(h[1]-7)}" width="12" height="14" rx="2" fill="#fff" stroke="var(--accent)" stroke-width="2"/><text x="${fx(x)}" y="${fx(h[1]+3)}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">X</text>`;break}
+      case'barbell':{const h=view==='f'?[(J.haL[0]+J.haR[0])/2,(J.haL[1]+J.haR[1])/2]:J.haN;front+=view==='f'?`<line x1="${fx(h[0]-40)}" y1="${fx(h[1])}" x2="${fx(h[0]+40)}" y2="${fx(h[1])}" stroke="var(--prop)" stroke-width="3.5"/><rect x="${fx(h[0]-46)}" y="${fx(h[1]-10)}" width="6" height="20" rx="2" fill="var(--prop)"/><rect x="${fx(h[0]+40)}" y="${fx(h[1]-10)}" width="6" height="20" rx="2" fill="var(--prop)"/>`:`<circle cx="${fx(h[0])}" cy="${fx(h[1])}" r="10" fill="none" stroke="var(--prop)" stroke-width="4"/><circle cx="${fx(h[0])}" cy="${fx(h[1])}" r="2.5" fill="var(--prop)"/>`;break}
+      case'pulldown':{const a=J.haL,b=J.haR;front+=`<line x1="${fx(a[0]+8)}" y1="${fx(a[1])}" x2="${fx(b[0]-8)}" y2="${fx(b[1])}" stroke="var(--prop)" stroke-width="3.5" stroke-linecap="round"/><line x1="${fx((a[0]+b[0])/2)}" y1="${fx(a[1])}" x2="${fx((a[0]+b[0])/2)}" y2="${F-190}" stroke="var(--band)" stroke-width="1.6"/>`;break}
+      case'benchFlat':{const y=J0.hip[1]+9;back+=`<rect x="${fx(box[0]+6)}" y="${fx(y)}" width="${fx(Math.min(110,box[2]-box[0]-30))}" height="7" rx="3" fill="${pr}"/><line x1="${fx(box[0]+20)}" y1="${fx(y)}" x2="${fx(box[0]+20)}" y2="${F}" stroke="${pr}" stroke-width="3"/><line x1="${fx(box[0]+90)}" y1="${fx(y)}" x2="${fx(box[0]+90)}" y2="${F}" stroke="${pr}" stroke-width="3"/>`;break}
+      case'boxJump':{const x=J0.toN[0]+18;back+=`<rect x="${fx(x)}" y="${F-30}" width="40" height="30" rx="3" fill="${ps}" stroke="${pr}"/>`;break}
       case'target':front+=`<circle cx="${fx(box[0]+6)}" cy="${fx(J0.shR?J0.shR[1]+10:F-80)}" r="7" fill="none" stroke="var(--accent)" stroke-width="3"/>`;break;
       case'tread':case'treadBack':case'treadSide':{const d=(n==='treadBack'?-1:1)*(p*40)%20;for(let x=box[0]-20;x<box[2]+20;x+=20)back+=`<line x1="${fx(x-d)}" y1="${F+4}" x2="${fx(x-d+8)}" y2="${F+4}" stroke="${pr}" stroke-width="2" stroke-linecap="round"/>`;break}
       case'line':back+=`<line x1="${fx(box[0]-10)}" y1="${F+2}" x2="${fx(box[2]+10)}" y2="${F+2}" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="6 5"/>`;break;
@@ -807,7 +861,7 @@ function poseAt(m,p){
     const n=K.length,seg=p*(n)%n,i=Math.floor(seg);t=ease(seg-i);a=K[i];b=K[(i+1)%n];
   }
   const out={};
-  for(const k in a){const x=a[k],y=b[k];out[k]=typeof x==='number'?(ANG.test(k)&&k!=='ts'&&k!=='tw'&&k!=='lsL'&&k!=='lsR'&&!/^(fs|ss|ls)/.test(k)?angLerp(x,y,t):lerp(x,y,t)):x}
+  for(const k in a){const x=a[k],y=b[k];out[k]=typeof x==='number'&&typeof y==='number'?(ANG.test(k)&&k!=='ts'&&k!=='tw'&&k!=='lsL'&&k!=='lsR'&&!/^(fs|ss|ls)/.test(k)?angLerp(x,y,t):lerp(x,y,t)):x}
   if(m.pulse)out._pulse=1;
   return out;
 }
@@ -857,7 +911,7 @@ function svgFor(key,p){
   const fr=L.frame(p),J=L.place(fr);
   const vb=viewBox(L,L.m.z);
   const hl=L.m.hl||[];const pulse=!!L.m.pulse;
-  const pr=props(L.m.props||[],L.J0,J,fr.P,L.view,p,L.box);
+  const pr=props(L.m.props||[],L.J0,J,fr.P,L.view,p,L.box,L.m);
   const body=L.view==='s'?drawSide(J,fr.P,hl,pulse):drawFront(J,fr.P,hl,pulse);
   const floor=`<line x1="${fx(vb[0])}" y1="${FLOOR}" x2="${fx(vb[0]+vb[2])}" y2="${FLOOR}" stroke="var(--prop)" stroke-width="1.5" opacity=".6"/>`;
   return`<svg viewBox="${vb.map(fx).join(' ')}" class="exfig${pulse?' pulse':''}" role="img" aria-hidden="true"><rect x="${fx(vb[0])}" y="${fx(vb[1])}" width="${fx(vb[2])}" height="${fx(vb[3])}" fill="var(--fig-bg)"/>${floor}${pr.back}${body}${pr.front}</svg>`;
