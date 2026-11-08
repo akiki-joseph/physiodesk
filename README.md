@@ -31,7 +31,8 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 **Made for physio work**
 * **Today** opens on a dial of the working day, like a goniometer: every session is an arc, a needle shows the time, and the middle counts down to the next client.
 * **Pain map**: tap where it hurts on a front and back body figure in each client's file (mild, moderate, severe).
-* **Home exercises**: build a program from 40 common exercises (neck, shoulder, back, hip and knee, ankle and foot, elbow and wrist) or your own, with sets and reps, and send it on WhatsApp.
+* **Exercise library**: the 500-exercise rehabilitation catalogue in 25 areas (neck to hand dexterity, aquatic, return to sport, breathing and pelvic floor). Each exercise has an animated anatomical figure showing the movement, with the working muscles in coral, plus its movement cue and its supervision or advanced-stage label. Open it from **Clients → Exercise library**.
+* **Home exercises**: build a client's program from the library (3 sets × 12 reps by default, editable) or add your own, and send it on WhatsApp with each exercise's cue.
 * **Monthly goal**: set the income you want; a ring shows how far you are and how many more sessions it takes.
 * **Reach out**: birthdays to wish and clients who stopped coming, each with a ready message.
 * **Receipts**: send a receipt on WhatsApp after a paid session.
