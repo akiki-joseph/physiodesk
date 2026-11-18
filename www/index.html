@@ -2140,7 +2140,7 @@ function authScreen(msg){
     <form class="form" data-form="auth" novalidate>
       ${m==='up'?`<label class="fld"><span>Your name</span><input id="au-name" name="name" autocomplete="name" required placeholder="e.g. Karim Haddad"></label>`:''}
       <label class="fld"><span>Email</span><input id="au-email" name="email" type="email" autocomplete="email" inputmode="email" required value="${esc(UI.authEmail||'')}"></label>
-      ${m==='code'?(UI.codeSent?`<label class="fld"><span>Code from the email</span><input id="au-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></label>`:'')
+      ${m==='code'?(UI.codeSent?`<label class="fld"><span>Code from the email (if it shows one)</span><input id="au-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></label>`:'')
         :`<label class="fld"><span>Password</span><input id="au-pass" name="password" type="password" autocomplete="${m==='up'?'new-password':'current-password'}" required minlength="8" placeholder="${m==='up'?'At least 8 characters':''}"></label>`}
       ${m==='up'?`<label class="chk small" style="font-weight:500"><input type="checkbox" name="agree" id="au-agree" required> I agree to the terms of use and the privacy policy</label>`:''}
       <div class="auth-msg" id="au-msg" role="alert">${msg?esc(msg):''}</div>
@@ -2166,7 +2166,7 @@ FORMS.auth=async(f,fd)=>{
       if(!data.session){PENDING_PASS=pass;setPending({email,name});checkEmailScreen();return}
       if(!S.settings.therapist)S.settings.therapist=name;
     }else if(AUTH_MODE==='code'){
-      if(!UI.codeSent){const{error}=await sb().auth.signInWithOtp({email,options:{shouldCreateUser:false}});if(error)throw error;UI.codeSent=true;authScreen('We sent a code to '+email+'.');return}
+      if(!UI.codeSent){const{error}=await sb().auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:AUTH_REDIRECT}});if(error)throw error;UI.codeSent=true;authScreen('We emailed '+email+'. Open the email on this phone and tap the link, or type the code if the email shows one.');return}
       const{error}=await sb().auth.verifyOtp({email,token:String(fd.get('code')||'').trim(),type:'email'});if(error)throw error;
       UI.mustSetPassword=true;
     }else{
