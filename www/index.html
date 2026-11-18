@@ -365,6 +365,9 @@ button.row[disabled]{opacity:.45}
 .card .cloudchip{background:var(--sunk);color:var(--muted)}
 .cloudchip.ok{color:var(--ok)}.cloudchip.error,.cloudchip.offline{color:var(--warn)}
 
+.bigicon{width:76px;height:76px;border-radius:24px;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary)}
+.bigicon.ok{background:var(--ok-soft);color:var(--ok)}
+
 /* ---------- modal sheet ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .scrim{position:absolute;inset:0;background:rgb(6 12 23/.55);opacity:0;transition:opacity .18s}
@@ -546,6 +549,7 @@ note:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
 search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
 alert:'<path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.01"/>',
 pulse:'<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>',
+mail:'<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/>',
 gift:'<rect x="3" y="9" width="18" height="12" rx="2"/><path d="M12 9v12M3 13h18M12 9C10 5 6.5 5 6.5 7.2S9.5 9 12 9zM12 9c2-4 5.5-4 5.5-1.8S14.5 9 12 9z"/>',
 move:'<circle cx="14" cy="4.5" r="2"/><path d="M8 21l3-6 3 2v4M11 15l1-6 4 3 3-1M12 9l-3.5 1.2L6 13"/>',
 target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
@@ -2156,38 +2160,113 @@ FORMS.auth=async(f,fd)=>{
       if(!name){msg.textContent='Type your name.';go.disabled=false;return}
       if(pass.length<8){msg.textContent='Choose a password of at least 8 characters.';go.disabled=false;return}
       if(fd.get('agree')!=='on'){msg.textContent='Please accept the terms and privacy policy.';go.disabled=false;return}
-      const{data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name}}});if(error)throw error;
-      if(!data.session){msg.textContent='Check your email and tap the link to confirm your account, then sign in here.';AUTH_MODE='in';go.disabled=false;return}
+      const{data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:AUTH_REDIRECT}});if(error)throw error;
+      if(!data.session){PENDING_PASS=pass;setPending({email,name});checkEmailScreen();return}
       if(!S.settings.therapist)S.settings.therapist=name;
     }else if(AUTH_MODE==='code'){
       if(!UI.codeSent){const{error}=await sb().auth.signInWithOtp({email,options:{shouldCreateUser:false}});if(error)throw error;UI.codeSent=true;authScreen('We sent a code to '+email+'.');return}
       const{error}=await sb().auth.verifyOtp({email,token:String(fd.get('code')||'').trim(),type:'email'});if(error)throw error;
       UI.mustSetPassword=true;
     }else{
-      const{error}=await sb().auth.signInWithPassword({email,password:String(fd.get('password')||'')});if(error)throw error;
+      const{error}=await sb().auth.signInWithPassword({email,password:String(fd.get('password')||'')});
+      if(error&&/not confirmed/i.test(error.message)){PENDING_PASS=String(fd.get('password')||'');setPending({email});checkEmailScreen();return}
+      if(error)throw error;
     }
   }catch(e){msg.textContent=authErr(e);go.disabled=false}
 };
+let SIGNIN_UID=null;
 async function onSignedIn(session){
+  if(SIGNIN_UID===session.user.id)return;SIGNIN_UID=session.user.id;
+  const pend=getPending();
+  if(pend&&pend.email===String(session.user.email||'').toLowerCase()){clearPending();await confirmedScreen(pend.name||(session.user.user_metadata||{}).name)}
   SESSION=session;AUTH_MODE='in';UI.codeSent=false;$('#auth-root').hidden=true;$('#auth-root').innerHTML='';
   await cloudSync();loadProfile().then(()=>{if(route().tab==='setup')render()});
   if(!S.settings.onboarded&&!S.appts.length&&!S.clients.length)welcome();
-  if(UI.mustSetPassword){UI.mustSetPassword=false;ACT.changePass()}
+  if(UI.mustSetPassword){UI.mustSetPassword=false;UI.forgotFlow=true;ACT.changePass()}
   render();
 }
 function bootCloud(){
   if(!cloudOn())return false;
   const root=$('#auth-root');root.hidden=false;root.innerHTML=`<div class="auth"><div class="auth-card" style="align-items:center"><span class="logo" style="width:46px;height:46px;border-radius:14px;color:#fff">${ic('pulse',24)}</span><p class="muted">Opening PhysioDesk…</p></div></div>`;
-  sb().auth.getSession().then(({data})=>{if(data&&data.session)onSignedIn(data.session);else authScreen()}).catch(()=>authScreen());
+  sb().auth.getSession().then(async({data})=>{
+    if(data&&data.session)return onSignedIn(data.session);
+    const app=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
+    if(app&&app.getLaunchUrl){try{const r=await app.getLaunchUrl();if(r&&r.url&&await handleAuthUrl(r.url))return}catch(e){}}
+    if(getPending())checkEmailScreen();else authScreen();
+  }).catch(()=>authScreen());
+  const app=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
+  if(app&&app.addListener)app.addListener('appUrlOpen',e=>handleAuthUrl(e&&e.url));
   sb().auth.onAuthStateChange((ev,session)=>{
-    if(ev==='SIGNED_IN'&&session&&(!SESSION||SESSION.user.id!==session.user.id))onSignedIn(session);
+    if(ev==='SIGNED_IN'&&session&&SIGNIN_UID!==session.user.id)onSignedIn(session);
     else if(ev==='TOKEN_REFRESHED'&&session)SESSION=session;
-    else if(ev==='SIGNED_OUT'){SESSION=null;PROFILE=null;AUTH_MODE='in';authScreen()}
+    else if(ev==='SIGNED_OUT'){SESSION=null;PROFILE=null;SIGNIN_UID=null;AUTH_MODE='in';authScreen()}
   });
   setInterval(()=>{if(!document.hidden)cloudSync()},60000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudSync()});
   window.addEventListener('online',()=>cloudSync());
   return true;
+}
+
+/* ---------- email confirmation ---------- */
+const AUTH_REDIRECT='physiodesk://auth/callback';
+const PENDING_KEY='physiodesk.pending';
+let PENDING_PASS='',pendPoll=null;
+function getPending(){try{return JSON.parse(localStorage.getItem(PENDING_KEY))}catch(e){return null}}
+function setPending(o){try{localStorage.setItem(PENDING_KEY,JSON.stringify({...o,email:o.email.toLowerCase(),at:Date.now()}))}catch(e){}}
+function clearPending(){try{localStorage.removeItem(PENDING_KEY)}catch(e){}PENDING_PASS='';clearInterval(pendPoll)}
+function checkEmailScreen(msg){
+  const pend=getPending();if(!pend){authScreen();return}
+  const root=$('#auth-root');root.hidden=false;
+  root.innerHTML=`<div class="auth"><div class="auth-card" style="text-align:center;align-items:center">
+    <span class="bigicon">${ic('mail',34)}</span>
+    <h1 class="h1">Confirm your email</h1>
+    <p style="margin:0">We sent a confirmation link to<br><b>${esc(pend.email)}</b></p>
+    <p class="muted" style="margin:0">Open the email on this phone and tap <b>Confirm my email</b>. PhysioDesk opens by itself and you’re in.</p>
+    <p class="hint" style="margin:0">No email after a minute? Look in the spam or promotions folder.</p>
+    <div class="auth-msg" id="au-msg" role="alert" style="color:var(--ok)">${msg?esc(msg):''}</div>
+    <button class="btn primary block" data-act="pendCheck">${ic('check',16)} I’ve confirmed, continue</button>
+    <button class="btn block" data-act="pendResend">Send the email again</button>
+    <button class="btn ghost block" data-act="pendCancel">Use a different email</button>
+  </div></div>`;
+  clearInterval(pendPoll);if(PENDING_PASS)pendPoll=setInterval(()=>{if(!document.hidden)pendTry(true)},15000);
+}
+async function pendTry(silent){
+  const pend=getPending();if(!pend)return;
+  if(!PENDING_PASS){AUTH_MODE='in';UI.authEmail=pend.email;authScreen('Email confirmed? Sign in with your password.');return}
+  const{error}=await sb().auth.signInWithPassword({email:pend.email,password:PENDING_PASS});
+  if(error&&!silent){const m=$('#au-msg');if(m){m.style.color='var(--bad)';m.textContent=/not confirmed/i.test(error.message)?'Not confirmed yet. Tap the link in the email first.':authErr(error)}}
+}
+ACT.pendCheck=()=>pendTry(false);
+ACT.pendResend=async()=>{const pend=getPending();const{error}=await sb().auth.resend({type:'signup',email:pend.email,options:{emailRedirectTo:AUTH_REDIRECT}});checkEmailScreen(error?authErr(error):'We sent the email again.')};
+ACT.pendCancel=()=>{clearPending();AUTH_MODE='up';authScreen()};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getPending()&&PENDING_PASS&&!SESSION)pendTry(true)});
+async function handleAuthUrl(url){
+  // physiodesk://auth/callback#access_token=…&refresh_token=…&type=signup  (or #error=…&error_description=…)
+  if(!url||!/^physiodesk:\/\/auth/i.test(url))return false;
+  const frag=new URLSearchParams((url.split('#')[1]||url.split('?')[1]||''));
+  if(frag.get('error')||frag.get('error_description')){
+    const d=frag.get('error_description')||'';
+    if(getPending())checkEmailScreen();else authScreen();
+    const m=$('#au-msg');if(m){m.style.color='var(--bad)';m.textContent=/expired|invalid/i.test(d)?'That link has expired. Send the email again and use the newest link.':d.replace(/\+/g,' ')}
+    return true;
+  }
+  const at=frag.get('access_token'),rt=frag.get('refresh_token');if(!at||!rt)return false;
+  const{data,error}=await sb().auth.setSession({access_token:at,refresh_token:rt});
+  if(error){authScreen(authErr(error));return true}
+  if(!getPending()&&frag.get('type')==='signup')setPending({email:data.session.user.email,name:(data.session.user.user_metadata||{}).name});
+  await onSignedIn(data.session);
+  return true;
+}
+function confirmedScreen(name){
+  return new Promise(res=>{
+    const root=$('#auth-root');root.hidden=false;
+    root.innerHTML=`<div class="auth"><div class="auth-card" style="text-align:center;align-items:center">
+      <span class="bigicon ok">${ic('check',38)}</span>
+      <h1 class="h1">Email confirmed</h1>
+      <p style="margin:0">Welcome to PhysioDesk${name?', '+esc(String(name).split(' ')[0]):''}. Your 30-day free trial has started.</p>
+      <button class="btn primary block" id="cf-go">Open PhysioDesk</button></div></div>`;
+    const done=()=>{clearTimeout(t);res()};const t=setTimeout(done,3500);$('#cf-go').onclick=done;
+  });
 }
 
 /* ---------- account settings ---------- */
@@ -2201,21 +2280,26 @@ function accountCard(){
     <button class="btn sm bad" style="align-self:flex-start" data-act="deleteAccount">${ic('trash',14)} Delete my account</button></section>`;
 }
 ACT.syncNow=async()=>{await cloudSync();render();toast(CLOUD.state==='ok'?'Everything is synced':'Could not sync: '+(CLOUD.err||'no connection'))};
-ACT.changePass=()=>openModal(`<form class="form" data-form="newpass"><div class="card-head" style="margin:0"><h2 class="h2">New password</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+ACT.changePass=(el)=>{const forgot=UI.forgotFlow;UI.forgotFlow=false;openModal(`<form class="form" data-form="newpass" data-forgot="${forgot?1:''}"><div class="card-head" style="margin:0"><h2 class="h2">${forgot?'Set a new password':'Change password'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  ${forgot?`<p class="hint" style="margin:0">You signed in with an emailed code. Choose a new password for next time.</p>`:`<label class="fld"><span>Current password</span><input id="np-0" name="p0" type="password" autocomplete="current-password" required></label>`}
   <label class="fld"><span>New password</span><input id="np-1" name="p1" type="password" autocomplete="new-password" minlength="8" required></label>
   <label class="fld"><span>Type it again</span><input id="np-2" name="p2" type="password" autocomplete="new-password" minlength="8" required></label>
-  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`);
-FORMS.newpass=async(f,fd)=>{const a=String(fd.get('p1')),b=String(fd.get('p2'));if(a.length<8){toast('Use at least 8 characters');return}if(a!==b){toast('The two passwords are different');return}
+  <p class="hint" style="margin:0">At least 8 characters. Forgot your current password? Sign out, then use “Forgot your password?” on the sign-in screen.</p>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`)};
+FORMS.newpass=async(f,fd)=>{const a=String(fd.get('p1')),b=String(fd.get('p2'));if(a.length<8){toast('Use at least 8 characters');return}if(a!==b){toast('The two new passwords are different');return}
+  if(!f.dataset.forgot){const cur=String(fd.get('p0')||'');if(!cur){toast('Type your current password');return}
+    const{error:e0}=await sb().auth.signInWithPassword({email:SESSION.user.email,password:cur});if(e0){toast(/invalid login/i.test(e0.message)?'Your current password is not right':authErr(e0));return}
+    if(cur===a){toast('Choose a password different from the current one');return}}
   const{error}=await sb().auth.updateUser({password:a});if(error){toast(authErr(error));return}closeModal();toast('Password changed')};
 ACT.signOut=async()=>{await cloudSync();const pending=CLOUD.state!=='ok';
-  ask('Sign out?',pending?'Some changes are not uploaded yet, because there is no connection. If you sign out now they are lost.':'Your data stays in your account. This phone’s copy is removed until you sign in again.',[{label:'Sign out',cls:'bad',run:()=>{(async()=>{try{await sb().auth.signOut()}catch(e){}wipeLocal();SESSION=null;render();authScreen()})();}}])};
+  ask('Sign out?',pending?'Some changes are not uploaded yet, because there is no connection. If you sign out now they are lost.':'Your data stays in your account. This phone’s copy is removed until you sign in again.',[{label:'Sign out',cls:'bad',run:()=>{(async()=>{try{await sb().auth.signOut()}catch(e){}wipeLocal();SESSION=null;SIGNIN_UID=null;render();authScreen()})();}}])};
 ACT.deleteAccount=()=>openModal(`<form class="form" data-form="delacct"><div class="card-head" style="margin:0"><h2 class="h2">Delete your account</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
   <p style="margin:0">This permanently deletes your account and every client, session, note and invoice in it, on all your devices. It can’t be undone. Make a backup first if you might need the data.</p>
   <label class="fld"><span>Type DELETE to confirm</span><input id="da-c" name="c" autocomplete="off"></label>
   <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn bad" type="submit">${ic('trash',16)} Delete forever</button></div></form>`);
 FORMS.delacct=async(f,fd)=>{if(String(fd.get('c')).trim()!=='DELETE'){toast('Type DELETE in capitals');return}
   const{error}=await sb().rpc('delete_my_account');if(error){toast('Could not delete: '+error.message);return}
-  UI.authMsg='Your account and its data were deleted.';try{await sb().auth.signOut()}catch(e){}wipeLocal();SESSION=null;closeModal();render();authScreen()};
+  UI.authMsg='Your account and its data were deleted.';try{await sb().auth.signOut()}catch(e){}wipeLocal();SESSION=null;SIGNIN_UID=null;closeModal();render();authScreen()};
 
 
 /* ================= phone calendar + reminder notifications (installed app only) ================= */

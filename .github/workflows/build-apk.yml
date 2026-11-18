@@ -42,6 +42,9 @@ jobs:
           sed -i 's#</application>#    <receiver android:name=".SmsAlarmReceiver" android:exported="false" />\n        <receiver android:name=".SmsBootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter></receiver>\n    </application>#' $SRC/AndroidManifest.xml
           grep -c "CALENDAR\|EXACT_ALARM\|SEND_SMS\|SmsAlarmReceiver\|SmsBootReceiver" $SRC/AndroidManifest.xml
           grep -q 'SmsAlarmReceiver' $SRC/AndroidManifest.xml
+          # Links like physiodesk://auth/callback (from the confirmation email) open the app
+          sed -i '0,/<\/activity>/s##            <intent-filter android:autoVerify="false">\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="physiodesk" />\n            </intent-filter>\n        </activity>#' $SRC/AndroidManifest.xml
+          grep -q 'android:scheme="physiodesk"' $SRC/AndroidManifest.xml
           grep -q registerPlugin $SRC/java/com/joseph/physiodesk/MainActivity.java
 
       - name: App icon
