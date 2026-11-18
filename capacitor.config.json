@@ -1,6 +1,8 @@
 {
-  "appId": "com.joseph.physiodesk",
-  "appName": "PhysioDesk",
+  "appId": "com.junctura.app",
+  "appName": "Junctura",
   "webDir": "www",
-  "android": { "allowMixedContent": false }
+  "android": {
+    "allowMixedContent": false
+  }
 }

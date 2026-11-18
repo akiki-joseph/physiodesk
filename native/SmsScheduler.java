@@ -1,4 +1,4 @@
-package com.joseph.physiodesk;
+package com.junctura.app;
 
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
@@ -18,7 +18,7 @@ import org.json.JSONObject;
 
 /** Keeps the list of reminder SMS, sets an alarm for each, and sends them. Works with the app closed. */
 public class SmsScheduler {
-    static final String PREFS = "physiodesk_sms";
+    static final String PREFS = "junctura_sms";
     static final String CHANNEL = "sms_reminders";
 
     static SharedPreferences prefs(Context c) {
@@ -27,7 +27,7 @@ public class SmsScheduler {
 
     static PendingIntent pending(Context c, int id, JSONObject item) {
         Intent i = new Intent(c, SmsAlarmReceiver.class);
-        i.setAction("com.joseph.physiodesk.SEND_SMS_" + id);
+        i.setAction("com.junctura.app.SEND_SMS_" + id);
         if (item != null) i.putExtra("item", item.toString());
         return PendingIntent.getBroadcast(c, id, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
@@ -88,7 +88,7 @@ public class SmsScheduler {
 
     /** Sends one SMS now. Returns null when it went out, or the reason it didn't. */
     static String send(Context c, String phone, String text) {
-        if (!canSend(c)) return "PhysioDesk isn't allowed to send SMS";
+        if (!canSend(c)) return "Junctura isn't allowed to send SMS";
         try {
             SmsManager m = manager(c);
             ArrayList<String> parts = m.divideMessage(text);

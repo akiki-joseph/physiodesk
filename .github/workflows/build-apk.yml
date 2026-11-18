@@ -1,4 +1,4 @@
-name: Build PhysioDesk APK
+name: Build Junctura APK
 
 on:
   push:
@@ -37,15 +37,15 @@ jobs:
       - name: Calendar connector and permissions
         run: |
           SRC=android/app/src/main
-          cp native/*.java $SRC/java/com/joseph/physiodesk/
+          cp native/*.java $SRC/java/com/junctura/app/
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.READ_CALENDAR" />\n    <uses-permission android:name="android.permission.WRITE_CALENDAR" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.SEND_SMS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n</manifest>#' $SRC/AndroidManifest.xml
           sed -i 's#</application>#    <receiver android:name=".SmsAlarmReceiver" android:exported="false" />\n        <receiver android:name=".SmsBootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter></receiver>\n    </application>#' $SRC/AndroidManifest.xml
           grep -c "CALENDAR\|EXACT_ALARM\|SEND_SMS\|SmsAlarmReceiver\|SmsBootReceiver" $SRC/AndroidManifest.xml
           grep -q 'SmsAlarmReceiver' $SRC/AndroidManifest.xml
-          # Links like physiodesk://auth/callback (from the confirmation email) open the app
-          sed -i '0,/<\/activity>/s##            <intent-filter android:autoVerify="false">\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="physiodesk" />\n            </intent-filter>\n        </activity>#' $SRC/AndroidManifest.xml
-          grep -q 'android:scheme="physiodesk"' $SRC/AndroidManifest.xml
-          grep -q registerPlugin $SRC/java/com/joseph/physiodesk/MainActivity.java
+          # Links like junctura://auth/callback (from the confirmation email) open the app
+          sed -i '0,/<\/activity>/s##            <intent-filter android:autoVerify="false">\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="junctura" />\n            </intent-filter>\n        </activity>#' $SRC/AndroidManifest.xml
+          grep -q 'android:scheme="junctura"' $SRC/AndroidManifest.xml
+          grep -q registerPlugin $SRC/java/com/junctura/app/MainActivity.java
 
       - name: App icon
         run: |
@@ -90,25 +90,25 @@ jobs:
             -Pandroid.injected.signing.store.password=android \
             -Pandroid.injected.signing.key.alias=androiddebugkey \
             -Pandroid.injected.signing.key.password=android
-          cp app/build/outputs/apk/release/app-release.apk ../PhysioDesk.apk
+          cp app/build/outputs/apk/release/app-release.apk ../Junctura.apk
 
       - name: Check the APK (right key, right build number, not a debug build)
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
-          "$BT/apksigner" verify --print-certs PhysioDesk.apk | tee signer.txt
+          "$BT/apksigner" verify --print-certs Junctura.apk | tee signer.txt
           grep -q "SHA-256 digest: 45fd01b3856bbdab1a5ee75b9f862ed4bb29690d912f3c9fc08b99df8ff0e49a" signer.txt \
             || { echo "::error::The APK isn't signed with the usual key, so it wouldn't install over the app on the phone."; exit 1; }
-          "$BT/aapt2" dump badging PhysioDesk.apk > badging.txt
+          "$BT/aapt2" dump badging Junctura.apk > badging.txt
           head -n 1 badging.txt
-          grep -q "package: name='com.joseph.physiodesk'" badging.txt || { echo "::error::Wrong app id."; exit 1; }
+          grep -q "package: name='com.junctura.app'" badging.txt || { echo "::error::Wrong app id."; exit 1; }
           grep -q "versionCode='${{ github.run_number }}'" badging.txt \
             || { echo "::error::The build number didn't make it into the APK."; exit 1; }
           if grep -q "application-debuggable" badging.txt; then echo "::error::This is a debug build."; exit 1; fi
 
       - uses: actions/upload-artifact@v6
         with:
-          name: PhysioDesk-apk
-          path: PhysioDesk.apk
+          name: Junctura-apk
+          path: Junctura.apk
           retention-days: 30
 
       - name: Publish as a Release (direct download on the phone)
@@ -116,9 +116,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "physiodesk-build-${{ github.run_number }}" PhysioDesk.apk \
+          gh release create "junctura-build-${{ github.run_number }}" Junctura.apk \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
-            --title "PhysioDesk build ${{ github.run_number }}" \
-            --notes "Install PhysioDesk.apk on Android (allow installs from this source when asked)." \
+            --title "Junctura build ${{ github.run_number }}" \
+            --notes "Install Junctura.apk on Android (allow installs from this source when asked)." \
             --latest

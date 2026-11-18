@@ -1,4 +1,4 @@
-/* PhysioDesk exercise animator.
+/* Junctura exercise animator.
    An anatomical mannequin drawn in SVG from joint angles. Three views:
    side (sagittal plane), front (frontal plane, also used lying down when seen from above),
    and a close-up hand for finger work. Each motion is a list of key poses that loop.

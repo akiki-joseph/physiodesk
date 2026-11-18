@@ -3,51 +3,52 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PhysioDesk</title>
+<title>Junctura</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="theme-color" content="#0f1b2d">
+<meta name="theme-color" content="#14151b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400..900&family=Manrope:wght@300..800&display=swap">
 <style>
 /* Layout: phone-first clinic app. A dark "goniometer" band opens Today (the day as a dial);
    everything else stays quiet on cool paper. Floating dock on phones, ink rail from 900px.
    Palette borrows from kinesiology tape: deep ink, electric blue, coral. */
-@font-face{font-family:"Bricolage Grotesque";src:url(fonts/bricolage.woff2) format("woff2");font-weight:200 800;font-display:swap}
-@font-face{font-family:"Figtree";src:url(fonts/figtree.woff2) format("woff2");font-weight:300 900;font-display:swap}
+@font-face{font-family:"Unbounded";src:url(fonts/unbounded.woff2) format("woff2");font-weight:200 900;font-display:swap}
+@font-face{font-family:"Manrope";src:url(fonts/manrope.woff2) format("woff2");font-weight:200 800;font-display:swap}
+/* Junctura palette: graphite, indigo for actions, mint for progress, signal coral for the needle and alerts. */
 :root{
-  --bg:#edf1f7; --surface:#ffffff; --sunk:#e4e9f2; --line:#d6deea; --text:#0f1b2d; --muted:#596780;
-  --primary:#2453e6; --primary-2:#1636a3; --on-primary:#ffffff; --primary-soft:#e1e8fd;
-  --accent:#f2512f; --accent-soft:#ffe4dc;
-  --ok:#11845a; --ok-soft:#d9f2e6; --warn:#9c5a00; --warn-soft:#fcefd6; --bad:#cf3340; --bad-soft:#fbe0e3;
-  --chart-a:#2453e6; --chart-b:#b7c4e4; --chart-c:#f2512f;
-  --ink:#0f1b2d; --ink-2:#1a2a47; --on-ink:#eef3ff; --ink-muted:#8f9fc2;
-  --dial-track:#22345a; --dial-sched:#7e9cff; --dial-done:#4fd39a; --dial-noshow:#ff6f76; --dial-needle:#ff7a5c;
-  --map-0:#dbe2ee; --map-1:#ffc94d; --map-2:#ff8a3d; --map-3:#e0383e;
-  --fig:#34425f; --fig-far:#a3afc8; --fig-line:#ffffff; --fig-tip:#4a5a7a; --fig-bg:#f3f6fb; --prop:#9aa6bd; --prop-soft:#dfe5ef; --band:#22a36f; --water:#4aa3df;
-  --shadow:0 1px 2px rgb(15 27 45/.05),0 12px 32px rgb(15 27 45/.08);
-  --f-display:"Bricolage Grotesque",Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --f-body:Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bg:#f3f4f8; --surface:#ffffff; --sunk:#e9eaf1; --line:#dcdee8; --text:#14151b; --muted:#5a5d70;
+  --primary:#5b4bff; --primary-2:#3d2fd6; --on-primary:#ffffff; --primary-soft:#ecebff;
+  --accent:#ff7a59; --accent-soft:#ffe8e1; --mint:#2ee6a6;
+  --ok:#0b7a53; --ok-soft:#d8f9ec; --warn:#9a5800; --warn-soft:#fdefd6; --bad:#d0344a; --bad-soft:#fde2e6;
+  --chart-a:#5b4bff; --chart-b:#c7c9d9; --chart-c:#ff7a59;
+  --ink:#14151b; --ink-2:#1e2030; --on-ink:#f3f4f8; --ink-muted:#8d90a6;
+  --dial-track:#262838; --dial-sched:#8174ff; --dial-done:#2ee6a6; --dial-noshow:#ff6f7d; --dial-needle:#ff7a59;
+  --map-0:#dcdee8; --map-1:#ffc94d; --map-2:#ff8a3d; --map-3:#e0383e;
+  --fig:#2a2c3a; --fig-far:#a8abc0; --fig-line:#ffffff; --fig-tip:#44475a; --fig-bg:#f3f4f8; --prop:#a0a3b8; --prop-soft:#e2e3ec; --band:#0fb37f; --water:#4aa3df;
+  --shadow:0 1px 2px rgb(20 21 27/.05),0 12px 32px rgb(20 21 27/.08);
+  --f-display:Unbounded,Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-body:Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --r:20px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0a111d; --surface:#111b2b; --sunk:#172338; --line:#233149; --text:#e8eefb; --muted:#93a1bd;
-  --primary:#7393ff; --primary-2:#aabfff; --on-primary:#06112e; --primary-soft:#1a2a52;
-  --accent:#ff7a5f; --accent-soft:#3d1f19;
-  --ok:#4fd39a; --ok-soft:#10301f; --warn:#f0b04f; --warn-soft:#352711; --bad:#ff6f76; --bad-soft:#3b1519;
-  --chart-a:#7393ff; --chart-b:#34456b; --chart-c:#ff7a5f;
-  --ink:#060c17; --ink-2:#101c33; --map-0:#26344d;
-  --fig:#c9d5ee; --fig-far:#5d6c8c; --fig-line:#111b2b; --fig-tip:#aebcda; --fig-bg:#0f1828; --prop:#5c6b88; --prop-soft:#25324a; --band:#4fd39a; --water:#3d7fbf;
+  --bg:#0d0e13; --surface:#16171f; --sunk:#1e2030; --line:#2a2c3d; --text:#eceef6; --muted:#9a9db3;
+  --primary:#8b7fff; --primary-2:#b9b2ff; --on-primary:#0d0b2e; --primary-soft:#24204d;
+  --accent:#ff8f73; --accent-soft:#3d221b;
+  --ok:#2ee6a6; --ok-soft:#0f3328; --warn:#f0b04f; --warn-soft:#352711; --bad:#ff7a88; --bad-soft:#3b1620;
+  --chart-a:#8b7fff; --chart-b:#3a3d52; --chart-c:#ff8f73;
+  --ink:#08090c; --ink-2:#14151d; --map-0:#2a2c3d;
+  --fig:#c9ccdd; --fig-far:#5c5f78; --fig-line:#16171f; --fig-tip:#aeb1c6; --fig-bg:#13141b; --prop:#5f6278; --prop-soft:#262838; --band:#2ee6a6; --water:#3d7fbf;
   --shadow:0 1px 2px rgb(0 0 0/.3),0 12px 32px rgb(0 0 0/.35); color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --bg:#0a111d; --surface:#111b2b; --sunk:#172338; --line:#233149; --text:#e8eefb; --muted:#93a1bd;
-  --primary:#7393ff; --primary-2:#aabfff; --on-primary:#06112e; --primary-soft:#1a2a52;
-  --accent:#ff7a5f; --accent-soft:#3d1f19;
-  --ok:#4fd39a; --ok-soft:#10301f; --warn:#f0b04f; --warn-soft:#352711; --bad:#ff6f76; --bad-soft:#3b1519;
-  --chart-a:#7393ff; --chart-b:#34456b; --chart-c:#ff7a5f;
-  --ink:#060c17; --ink-2:#101c33; --map-0:#26344d;
-  --fig:#c9d5ee; --fig-far:#5d6c8c; --fig-line:#111b2b; --fig-tip:#aebcda; --fig-bg:#0f1828; --prop:#5c6b88; --prop-soft:#25324a; --band:#4fd39a; --water:#3d7fbf;
+  --bg:#0d0e13; --surface:#16171f; --sunk:#1e2030; --line:#2a2c3d; --text:#eceef6; --muted:#9a9db3;
+  --primary:#8b7fff; --primary-2:#b9b2ff; --on-primary:#0d0b2e; --primary-soft:#24204d;
+  --accent:#ff8f73; --accent-soft:#3d221b;
+  --ok:#2ee6a6; --ok-soft:#0f3328; --warn:#f0b04f; --warn-soft:#352711; --bad:#ff7a88; --bad-soft:#3b1620;
+  --chart-a:#8b7fff; --chart-b:#3a3d52; --chart-c:#ff8f73;
+  --ink:#08090c; --ink-2:#14151d; --map-0:#2a2c3d;
+  --fig:#c9ccdd; --fig-far:#5c5f78; --fig-line:#16171f; --fig-tip:#aeb1c6; --fig-bg:#13141b; --prop:#5f6278; --prop-soft:#262838; --band:#2ee6a6; --water:#3d7fbf;
   --shadow:0 1px 2px rgb(0 0 0/.3),0 12px 32px rgb(0 0 0/.35); color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -69,7 +70,7 @@ a{color:var(--primary)}
 .nav a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;color:var(--ink-muted);font-size:10.5px;font-weight:600;text-decoration:none;border-radius:16px;min-width:0}
 .nav a span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .nav a.on{color:var(--on-ink);background:rgb(255 255 255/.09)}
-.nav .add{justify-self:center;width:50px;height:50px;border-radius:17px;border:0;background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:0 6px 16px rgb(242 81 47/.45)}
+.nav .add{justify-self:center;width:50px;height:50px;border-radius:17px;border:0;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;box-shadow:0 6px 18px rgb(91 75 255/.45)}
 .nav .add:active{transform:scale(.95)}
 .nav .brand{display:none}
 .main{padding-block:16px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -82,11 +83,11 @@ a{color:var(--primary)}
   .nav .brand{order:-2;display:flex;align-items:center;gap:10px;padding:0 8px 20px;font-family:var(--f-display);font-weight:700;font-size:20px;color:var(--on-ink);letter-spacing:-.01em}
   .main{margin-left:232px;padding-block:28px 48px;padding-left:max(36px,env(safe-area-inset-left,0px));padding-right:max(36px,env(safe-area-inset-right,0px))}
 }
-.logo{width:32px;height:32px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center}
+.logo{width:32px;height:32px;border-radius:10px;background:#5b4bff;color:#fff;display:grid;place-items:center}
 
 /* ---------- type ---------- */
-.h1{font-family:var(--f-display);font-size:28px;line-height:1.08;font-weight:700;letter-spacing:-.025em;margin:0;text-wrap:balance}
-.h2{font-family:var(--f-display);font-size:18.5px;font-weight:700;letter-spacing:-.015em;margin:0}
+.h1{font-family:var(--f-display);font-size:25px;line-height:1.12;font-weight:700;letter-spacing:-.03em;margin:0;text-wrap:balance}
+.h2{font-family:var(--f-display);font-size:16.5px;font-weight:600;letter-spacing:-.02em;margin:0}
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);font-weight:700}
 .muted{color:var(--muted)}
 .small{font-size:13px}
@@ -95,7 +96,7 @@ a{color:var(--primary)}
 
 /* ---------- Today band: the day as a goniometer ---------- */
 .today-hero{position:relative;overflow:hidden;background:var(--ink);color:var(--on-ink);border-radius:28px;padding:20px 18px 18px;display:grid;gap:6px;
-  background-image:radial-gradient(120% 80% at 100% 0%,rgb(36 83 230/.35),transparent 60%),radial-gradient(90% 70% at 0% 100%,rgb(242 81 47/.18),transparent 60%)}
+  background-image:radial-gradient(120% 80% at 100% 0%,rgb(91 75 255/.38),transparent 60%),radial-gradient(90% 70% at 0% 100%,rgb(46 230 166/.12),transparent 60%)}
 .today-hero .eyebrow{color:var(--ink-muted)}
 .today-hero .h1{color:var(--on-ink)}
 .hero-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
@@ -105,7 +106,7 @@ a{color:var(--primary)}
 .dial svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .dial-center{position:absolute;inset:27%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;border-radius:50%}
 .dial-center .eyebrow{color:var(--dial-needle)}
-.dial-center b{font-family:var(--f-display);font-size:21px;line-height:1.1;letter-spacing:-.02em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dial-center b{font-family:var(--f-body);font-weight:800;font-size:21px;line-height:1.1;letter-spacing:-.02em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dial-center span{font-size:13px;color:var(--ink-muted)}
 .dial-center .big{font-family:var(--f-display);font-size:34px;font-weight:700;color:var(--on-ink);letter-spacing:-.03em;line-height:1}
 .dial-center button{margin-top:6px;border:0;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:700;background:rgb(255 255 255/.1);color:var(--on-ink)}
@@ -317,7 +318,7 @@ a{color:var(--primary)}
 .exnone{display:grid;place-items:center;color:var(--muted)}
 .exthumb-btn{border:0;padding:0;background:none;border-radius:12px;flex:none}
 .exbig{width:100%;aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:var(--fig-bg)}
-.exfig .mz{filter:drop-shadow(0 0 2.5px rgb(242 81 47/.55))}
+.exfig .mz{filter:drop-shadow(0 0 2.5px rgb(91 75 255/.5))}
 .prog .ex .info span{white-space:normal}
 .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .excard{border:1px solid var(--line);border-radius:18px;background:var(--surface);overflow:hidden;text-align:left;padding:0;display:flex;flex-direction:column;min-width:0}
@@ -354,7 +355,7 @@ button.row[disabled]{opacity:.45}
 /* ---------- account ---------- */
 #auth-root{position:fixed;inset:0;z-index:85;overflow:auto;background:var(--ink)}
 .auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:28px max(16px,env(safe-area-inset-left,0px));
-  background-image:radial-gradient(120% 70% at 100% 0%,rgb(36 83 230/.35),transparent 60%),radial-gradient(90% 60% at 0% 100%,rgb(242 81 47/.2),transparent 60%)}
+  background-image:radial-gradient(120% 70% at 100% 0%,rgb(91 75 255/.38),transparent 60%),radial-gradient(90% 60% at 0% 100%,rgb(46 230 166/.14),transparent 60%)}
 .auth-card{width:100%;max-width:420px;background:var(--surface);border-radius:26px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgb(0 0 0/.35)}
 .auth-brand{display:flex;gap:12px;align-items:center}
 .auth-brand b{display:block;font-family:var(--f-display);font-size:22px;letter-spacing:-.02em}
@@ -447,7 +448,7 @@ button.row[disabled]{opacity:.45}
 /* ================= storage ================= */
 const KEY='physiodesk.v1';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-const SVC_COLORS=['#2453e6','#f2512f','#11845a','#8a4fe0','#d99a00','#d63d8f','#0f97b3','#5a6780'];
+const SVC_COLORS=['#5b4bff','#ff7a59','#11845a','#8a4fe0','#d99a00','#d63d8f','#0f97b3','#5a6780'];
 const METHODS=['Cash','Card','Bank transfer','Wallet app','Insurance'];
 const EXP_CATS=['Rent','Equipment','Supplies','Transport','Utilities','Marketing','Salaries','Fees & licences','Other'];
 function defaults(){return{
@@ -555,6 +556,7 @@ move:'<circle cx="14" cy="4.5" r="2"/><path d="M8 21l3-6 3 2v4M11 15l1-6 4 3 3-1
 target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
 repeat:'<path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"/>',
 };
+const jmark=(z=20)=>`<svg width="${z}" height="${z}" viewBox="0 0 100 100" aria-hidden="true"><path d="M66 18 L66 58 A24 24 0 0 1 18 58" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round"/><circle cx="66" cy="18" r="11" fill="#2ee6a6"/><circle cx="18" cy="58" r="11" fill="#fff"/></svg>`;
 const ic=(n,s=20)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
 
 /* ================= theme ================= */
@@ -617,7 +619,7 @@ function render(){
     default:body=viewToday();
   }
   $('#app').innerHTML=`<nav class="nav" aria-label="Main">
-    <div class="brand"><span class="logo">${ic('pulse',18)}</span>PhysioDesk</div>
+    <div class="brand"><span class="logo">${jmark(18)}</span>Junctura</div>
     ${tabs.slice(0,2).map(link).join('')}
     <button class="add" data-act="newAppt" aria-label="New session">${ic('plus',24)}</button>
     ${tabs.slice(2).map(link).join('')}
@@ -1026,7 +1028,7 @@ function viewSettings(){
     <label class="fld"><span>Remind me to message the client</span><select id="set-remindBefore" data-change="setting" data-k="remindBefore">${[['0','Off'],['30','30 minutes before'],['60','1 hour before'],['120','2 hours before'],['180','3 hours before'],['eve','The evening before, at 8 pm']].map(([v,l])=>`<option value="${v}" ${String(s.remindBefore)===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="fld"><span>How</span><select id="set-remindMode" data-change="setting" data-k="remindMode"><option value="sms" ${s.remindMode==='sms'?'selected':''}>Send an SMS automatically</option><option value="whatsapp" ${s.remindMode!=='sms'?'selected':''}>Notify me to send it on WhatsApp</option></select></label>
     ${s.remindMode==='sms'?`<p class="hint">The phone sends the SMS by itself from your number, even when the app is closed, and shows you a "Reminder SMS sent" notification. Normal SMS rates of your line apply.${isNative()?'':' (Works in the installed app.)'}</p>
-      ${isNative()&&!smsGranted?`<div class="banner">${ic('alert')}<div style="flex:1;min-width:0"><b>PhysioDesk isn't allowed to send SMS yet</b><span class="small">Until you allow it, you get the WhatsApp notification instead.</span></div><button class="btn sm" data-act="smsAllow">Allow</button></div>`:''}
+      ${isNative()&&!smsGranted?`<div class="banner">${ic('alert')}<div style="flex:1;min-width:0"><b>Junctura isn't allowed to send SMS yet</b><span class="small">Until you allow it, you get the WhatsApp notification instead.</span></div><button class="btn sm" data-act="smsAllow">Allow</button></div>`:''}
       <div class="r2" style="align-items:end"><label class="fld"><span>Test it on your own number</span><input id="sms-test" type="tel" inputmode="tel" placeholder="e.g. 03 123 456"></label><button class="btn" data-act="smsTest">Send test SMS</button></div>`
     :`<p class="hint">At that time the phone shows a notification. Tap it and WhatsApp opens with the message ready; tap send. WhatsApp doesn't let apps send messages on their own.${isNative()?'':' (Notifications work in the installed app.)'}</p>`}
     <label class="fld"><span>Message</span><textarea id="set-reminder" rows="3" data-change="setting" data-k="reminder">${esc(s.reminder)}</textarea></label>
@@ -1058,7 +1060,7 @@ function viewSettings(){
     <p class="hint">${S.appts.some(a=>a.demo)?'The app holds sample clients and sessions. Remove them before you start for real; your own entries stay.':'Load made-up clients and sessions to see how the app works.'}</p>
     <div class="btn-row">${S.appts.some(a=>a.demo)?`<button class="btn" data-act="clearDemo">Remove sample data</button>`:`<button class="btn" data-act="loadDemo">Load sample data</button>`}
     <button class="btn bad" data-act="eraseAll">${ic('trash',15)} Erase everything</button></div></section>
-  <p class="hint" style="text-align:center">PhysioDesk · works offline · ${S.clients.length} clients · ${S.appts.length} sessions</p>`;
+  <p class="hint" style="text-align:center">Junctura · works offline · ${S.clients.length} clients · ${S.appts.length} sessions</p>`;
 }
 
 /* ================= modals ================= */
@@ -1317,7 +1319,7 @@ const ACT={
   exportCsv:()=>exportCsv(),
   loadDemo:()=>{loadDemo();save();render();toast('Sample data loaded')},
   clearDemo:()=>ask('Remove the sample data?','Only the made-up clients, sessions and expenses are removed.',[{label:'Remove',cls:'bad',run:()=>{clearDemo();save();toast('Sample data removed')}}]),
-  eraseAll:()=>ask('Erase everything?','All clients, sessions, notes and expenses on this phone are deleted, and the sessions PhysioDesk added to your calendar are removed from it. Back up first if you might need them.',[{label:'Erase everything',cls:'bad',run:()=>{trashCal(S.appts);const keep=S.settings,places=S.places,trash=S.calTrash;S=defaults();S.settings={...keep,lastBackup:''};S.places=places;S.calTrash=trash;save();toast('Everything erased')}}]),
+  eraseAll:()=>ask('Erase everything?','All clients, sessions, notes and expenses on this phone are deleted, and the sessions Junctura added to your calendar are removed from it. Back up first if you might need them.',[{label:'Erase everything',cls:'bad',run:()=>{trashCal(S.appts);const keep=S.settings,places=S.places,trash=S.calTrash;S=defaults();S.settings={...keep,lastBackup:''};S.places=places;S.calTrash=trash;save();toast('Everything erased')}}]),
   onbStart:el=>{const f=el.closest('.form');const pn=f.querySelector('#o-place').value.trim();let pl=S.places.find(p=>!p.own);if(!pl){pl={id:'p1'};S.places.push(pl)}
     Object.assign(pl,{name:pn||pl.name||'Clinic',cut:+f.querySelector('#o-cut').value||0,fee:+f.querySelector('#o-fee').value||0});S.settings.therapist=f.querySelector('#o-name').value.trim();S.settings.currency=f.querySelector('#o-cur').value.trim()||'$';S.settings.onboarded=true;if(el.dataset.demo)loadDemo();save();closeModal();render()},
 };
@@ -1333,7 +1335,7 @@ const CHANGE={
     if(k==='startHour'&&S.settings.endHour<=v)S.settings.endHour=Math.min(24,v+1);if(k==='endHour'&&S.settings.startHour>=v)S.settings.startHour=Math.max(0,v-1);
     save();if(k==='theme')applyTheme();if(k!=='reminder'&&k!=='therapist'&&k!=='cc')render();
     if(k==='remindMode'&&v==='sms'&&isNative()){smsAsk().then(ok=>{render();toast(ok?'Saved. Reminders go out by SMS automatically':'SMS not allowed. You get the WhatsApp notification instead')})}
-    else if(k==='remindBefore'&&v!=='0'&&isNative())askNotifPermission().then(ok=>{toast(ok?'Saved. You’ll get a notification '+(v==='eve'?'the evening before':'before each session'):'Allow notifications for PhysioDesk in the phone settings')});else toast('Saved')},
+    else if(k==='remindBefore'&&v!=='0'&&isNative())askNotifPermission().then(ok=>{toast(ok?'Saved. You’ll get a notification '+(v==='eve'?'the evening before':'before each session'):'Allow notifications for Junctura in the phone settings')});else toast('Saved')},
   svcPick:el=>{const s=getSvc(el.value);$('#f-dur').value=s.duration;if(getPlace($('#f-place').value).own||$('#f-kind').value!=='clinic')$('#f-price').value=s.price;CHANGE.conflict();updateSplit()},
   placePick:el=>{const pl=getPlace(el.value);if(pl.own)$('#f-kind').value='private';if(!pl.own&&$('#f-kind').value==='clinic')$('#f-price').value=pl.fee;updateSplit()},
   kindPick:el=>{const pl=getPlace($('#f-place').value);$('#f-price').value=el.value==='clinic'?pl.fee:getSvc($('#f-service').value).price;updateSplit()},
@@ -1427,7 +1429,7 @@ function keypad(title,sub,onDone,opts={}){
   const kb=e=>{if(/^\d$/.test(e.key))press(e.key);else if(e.key==='Backspace')press('b')};addEventListener('keydown',kb);
 }
 function lockNow(){if(!S.settings.pinHash||$('#lock-root').innerHTML)return;
-  keypad('PhysioDesk is locked','Enter your 4-digit PIN',async(p,fail)=>{if(await hashPin(p)===S.settings.pinHash)return true;fail('Wrong PIN, try again');return false})}
+  keypad('Junctura is locked','Enter your 4-digit PIN',async(p,fail)=>{if(await hashPin(p)===S.settings.pinHash)return true;fail('Wrong PIN, try again');return false})}
 function pinSetup(){let first='';
   keypad('Choose a PIN','4 digits you will remember',async(p,fail)=>{
     if(!first){first=p;fail('');$('#pin-sub').textContent='Type the same PIN again';$('#pin-dots').classList.remove('shake');return false}
@@ -1447,8 +1449,8 @@ async function saveFile(name,text,mime){
   catch(e){toast('This browser blocked the download');return false}
 }
 async function exportBackup(){
-  const name=`PhysioDesk-backup-${today()}.json`;
-  const ok=await saveFile(name,JSON.stringify({app:'PhysioDesk',exported:new Date().toISOString(),data:{...S,settings:{...S.settings,pinHash:''}}},null,1),'application/json');
+  const name=`Junctura-backup-${today()}.json`;
+  const ok=await saveFile(name,JSON.stringify({app:'Junctura',exported:new Date().toISOString(),data:{...S,settings:{...S.settings,pinHash:''}}},null,1),'application/json');
   if(ok){S.settings.lastBackup=today();save();render();toast('Backup ready: '+name)}
 }
 function csvCell(v){v=String(v??'');return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
@@ -1458,7 +1460,7 @@ function exportCsv(){
     const pl=getPlace(a.placeId);
     rows.push(['Session',a.date,a.time,c.name,c.phone,getSvc(a.serviceId).name,pl.name,pl.own?'':a.kind==='clinic'?'Clinic':'Me',STATUS[a.status][0],a.duration,a.price,+a.cut||0,earn(a),a.cost||0,inc?earn(a)-(+a.cost||0):0,inc?(a.paid?'Yes':'No'):'',a.paid?(a.kind==='clinic'?'Clinic':a.method):'',a.notes])});
   S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>rows.push(['Expense',e.date,'','','',e.category,'','','','',-e.amount,'',-e.amount,'',-e.amount,'','',e.note]));
-  saveFile(`PhysioDesk-${today()}.csv`,'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv');
+  saveFile(`Junctura-${today()}.csv`,'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv');
 }
 let pickMode='';
 function pickFile(mode){pickMode=mode;const i=$('#file-in');i.value='';i.click()}
@@ -1466,8 +1468,8 @@ $('#file-in').addEventListener('change',e=>{const f=e.target.files[0];if(!f)retu
   r.onload=()=>{const t=String(r.result||'');if(pickMode==='ics'||/BEGIN:VCALENDAR/.test(t.slice(0,400)))icsPreview(t);else restoreFrom(t)};
   r.onerror=()=>toast('Could not read that file');r.readAsText(f)});
 function restoreFrom(t){
-  let d;try{const j=JSON.parse(t);d=j.data||j}catch(e){toast('That file is not a PhysioDesk backup');return}
-  if(!d||!Array.isArray(d.appts)||!Array.isArray(d.clients)){toast('That file is not a PhysioDesk backup');return}
+  let d;try{const j=JSON.parse(t);d=j.data||j}catch(e){toast('That file is not a Junctura backup');return}
+  if(!d||!Array.isArray(d.appts)||!Array.isArray(d.clients)){toast('That file is not a Junctura backup');return}
   ask('Restore this backup?',`It holds ${d.clients.length} clients and ${d.appts.length} sessions. It replaces what is on this phone now.`,[{label:'Restore',run:()=>{
     const keep=S.settings,trash=S.calTrash;S=migrate(d);S.settings={...S.settings,pinHash:keep.pinHash,onboarded:true,calSync:keep.calSync,calId:keep.calId,calName:keep.calName};S.calTrash=trash;
     for(const a of S.appts){a.calSig='';if(a.calCal!==keep.calId)a.calEventId=''}save();applyTheme();toast('Backup restored')}}]);
@@ -1540,7 +1542,7 @@ let IMP=[],IMPF='';
 function importPreview(items){
   const already=new Set(S.appts.map(a=>a.importKey).filter(Boolean));
   IMP=items.filter(i=>!already.has(i.key));IMPF='';
-  if(!IMP.length){toast(items.length?'Those appointments are already in PhysioDesk':'No timed appointments in the last 12 months or the next 12');return}
+  if(!IMP.length){toast(items.length?'Those appointments are already in Junctura':'No timed appointments in the last 12 months or the next 12');return}
   const cals={};IMP.forEach(i=>{if(i.cal)cals[i.cal]=(cals[i.cal]||0)+1});
   const names=Object.keys(cals).sort((x,y)=>cals[y]-cals[x]);
   const skipped=items.length-IMP.length;
@@ -1582,11 +1584,11 @@ async function importFromPhone(){
   const P=CALP();
   if(!P){toast('This works in the installed app. Here, use "From a file".');return}
   try{
-    if(!(await P.requestAccess()).granted){toast('Allow calendar access: phone Settings → Apps → PhysioDesk → Permissions → Calendar');return}
+    if(!(await P.requestAccess()).granted){toast('Allow calendar access: phone Settings → Apps → Junctura → Permissions → Calendar');return}
     toast('Reading your calendar…');
     const now=Date.now(),r=await P.listInstances({start:now-365*864e5,end:now+365*864e5});
     const mine=new Set(S.appts.map(a=>a.calEventId).filter(Boolean));
-    const items=(r.events||[]).filter(e=>e.title&&!e.allDay&&+e.status!==2&&!mine.has(String(e.eventId))&&!/Booked in PhysioDesk/.test(e.description||''))
+    const items=(r.events||[]).filter(e=>e.title&&!e.allDay&&+e.status!==2&&!mine.has(String(e.eventId))&&!/Booked in (PhysioDesk|Junctura)/.test(e.description||''))
       .map(e=>{const st=new Date(+e.begin);return{title:String(e.title).trim(),desc:e.description||'',date:ymd(st),time:pad(st.getHours())+':'+pad(st.getMinutes()),
         dur:Math.min(600,Math.max(5,Math.round((+e.end-+e.begin)/6e4)||45)),key:'cal:'+e.eventId+':'+e.begin,cal:e.calendarName||'Calendar'}})
       .sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time));
@@ -1891,19 +1893,19 @@ ACT.pkgDel=el=>{const c=getClient(el.dataset.id);ask('Remove this package?','Ses
 function wrapText(ctx,text,maxW){const out=[];for(const para of String(text||'').split('\n')){let line='';for(const w of para.split(/\s+/)){const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t}out.push(line)}return out}
 async function renderDoc(d){
   try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}
-  const W=1240,M=84,st=S.settings,INK='#0f1b2d',MUT='#5a6780',LINE='#d6deea',ACC='#2453e6';
+  const W=1240,M=84,st=S.settings,INK='#14151b',MUT='#5a5d70',LINE='#dcdee8',ACC='#5b4bff';
   const c=document.createElement('canvas'),x=c.getContext('2d');
-  const F=(s,w=500,fam='Figtree')=>`${w} ${s}px ${fam}, system-ui, sans-serif`;
+  const F=(s,w=500,fam='Manrope')=>`${w} ${s}px ${fam}, system-ui, sans-serif`;
   let sig=null;if(st.sig){sig=new Image();sig.src=st.sig;await new Promise(r=>{sig.onload=r;sig.onerror=r})}
   const draw=on=>{let y=0;
     const T=(t,X,Y,font,col=INK,al='left')=>{if(on){x.font=font;x.fillStyle=col;x.textAlign=al;x.fillText(t,X,Y)}};
     x.font=F(24);
     // header band
-    if(on){x.fillStyle='#ffffff';x.fillRect(0,0,W,c.height);x.fillStyle=INK;x.fillRect(0,0,W,210);x.fillStyle='#f2512f';x.fillRect(0,206,W,6)}
-    T(st.docName||st.therapist||'Physiotherapy',M,96,F(46,700,'Bricolage Grotesque'),'#eef3ff');
+    if(on){x.fillStyle='#ffffff';x.fillRect(0,0,W,c.height);x.fillStyle=INK;x.fillRect(0,0,W,210);x.fillStyle='#5b4bff';x.fillRect(0,206,W,6)}
+    T(st.docName||st.therapist||'Physiotherapy',M,96,F(40,700,'Unbounded'),'#eef3ff');
     T([st.docTitle||'Physiotherapist',st.docReg?'Reg. '+st.docReg:''].filter(Boolean).join(' · '),M,140,F(26),'#a9b8d8');
     T([st.docPhone,st.docEmail].filter(Boolean).join('   '),M,176,F(22),'#a9b8d8');
-    T(d.title,W-M,96,F(40,700,'Bricolage Grotesque'),'#eef3ff','right');
+    T(d.title,W-M,96,F(36,700,'Unbounded'),'#eef3ff','right');
     if(d.number)T(d.number,W-M,140,F(26,600),'#a9b8d8','right');
     y=270;
     // meta columns
@@ -2017,7 +2019,7 @@ function waitText(w,a){const first=String(w.name||'').split(' ')[0];return`Hello
 function waitlistCard(){
   const L=S.waitlist||[];
   return`<section class="card"><div class="card-head"><div><h2 class="h2">Waitlist</h2><div class="muted small">Clients who want an earlier or extra session</div></div><button class="btn sm soft" data-act="addWait">${ic('plus',14)} Add</button></div>
-  ${L.length?`<div class="list">${L.map(w=>`<div class="row" style="cursor:default">${avatar({name:w.name})}<div class="info"><b>${esc(w.name)}</b><span>${esc([w.pref,w.note].filter(Boolean).join(' · ')||'Any time')} · added ${esc(fmtD(w.added,{day:'numeric',month:'short'}))}</span></div><div class="btn-row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm soft" data-act="waitBook" data-w="${w.id}">Book</button><button class="btn sm ghost icon" data-act="waitDel" data-w="${w.id}" aria-label="Remove ${esc(w.name)}">${ic('x',15)}</button></div></div>`).join('')}</div>`:`<p class="muted" style="margin:0">When a session is cancelled, PhysioDesk suggests who to offer the slot to.</p>`}</section>`;
+  ${L.length?`<div class="list">${L.map(w=>`<div class="row" style="cursor:default">${avatar({name:w.name})}<div class="info"><b>${esc(w.name)}</b><span>${esc([w.pref,w.note].filter(Boolean).join(' · ')||'Any time')} · added ${esc(fmtD(w.added,{day:'numeric',month:'short'}))}</span></div><div class="btn-row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm soft" data-act="waitBook" data-w="${w.id}">Book</button><button class="btn sm ghost icon" data-act="waitDel" data-w="${w.id}" aria-label="Remove ${esc(w.name)}">${ic('x',15)}</button></div></div>`).join('')}</div>`:`<p class="muted" style="margin:0">When a session is cancelled, Junctura suggests who to offer the slot to.</p>`}</section>`;
 }
 ACT.addWait=()=>openModal(`<form class="form" data-form="wait" autocomplete="off"><div class="card-head" style="margin:0"><h2 class="h2">Add to waitlist</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
   <label class="fld"><span>Client</span><input id="wt-name" name="name" list="wt-clients" required placeholder="Name"><datalist id="wt-clients">${S.clients.map(c=>`<option value="${esc(c.name)}">`).join('')}</datalist></label>
@@ -2132,7 +2134,7 @@ function authScreen(msg){
   const root=$('#auth-root');if(!root)return;msg=msg||UI.authMsg;
   const m=AUTH_MODE;
   root.innerHTML=`<div class="auth"><div class="auth-card">
-    <div class="auth-brand"><span class="logo" style="width:46px;height:46px;border-radius:14px;color:#fff">${ic('pulse',24)}</span><div><b>PhysioDesk</b><span>Appointments, clients and income for physiotherapists</span></div></div>
+    <div class="auth-brand"><span class="logo" style="width:46px;height:46px;border-radius:14px;color:#fff">${jmark(24)}</span><div><b>Junctura</b><span>Appointments, clients and income for physiotherapists</span></div></div>
     ${m==='code'?`<h1 class="h1">Sign in with a code</h1><p class="muted" style="margin:0">We email you a 6-digit code. Use it to sign in, then set a new password in Settings.</p>`
       :`<div class="seg auth-seg"><button data-act="authMode" data-v="in" class="${m==='in'?'on':''}">Sign in</button><button data-act="authMode" data-v="up" class="${m==='up'?'on':''}">Create account</button></div>`}
     <form class="form" data-form="auth" novalidate>
@@ -2187,7 +2189,7 @@ async function onSignedIn(session){
 }
 function bootCloud(){
   if(!cloudOn())return false;
-  const root=$('#auth-root');root.hidden=false;root.innerHTML=`<div class="auth"><div class="auth-card" style="align-items:center"><span class="logo" style="width:46px;height:46px;border-radius:14px;color:#fff">${ic('pulse',24)}</span><p class="muted">Opening PhysioDesk…</p></div></div>`;
+  const root=$('#auth-root');root.hidden=false;root.innerHTML=`<div class="auth"><div class="auth-card" style="align-items:center"><span class="logo" style="width:46px;height:46px;border-radius:14px;color:#fff">${jmark(24)}</span><p class="muted">Opening Junctura…</p></div></div>`;
   sb().auth.getSession().then(async({data})=>{
     if(data&&data.session)return onSignedIn(data.session);
     const app=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
@@ -2208,7 +2210,7 @@ function bootCloud(){
 }
 
 /* ---------- email confirmation ---------- */
-const AUTH_REDIRECT='physiodesk://auth/callback';
+const AUTH_REDIRECT='junctura://auth/callback';
 const PENDING_KEY='physiodesk.pending';
 let PENDING_PASS='',pendPoll=null;
 function getPending(){try{return JSON.parse(localStorage.getItem(PENDING_KEY))}catch(e){return null}}
@@ -2221,7 +2223,7 @@ function checkEmailScreen(msg){
     <span class="bigicon">${ic('mail',34)}</span>
     <h1 class="h1">Confirm your email</h1>
     <p style="margin:0">We sent a confirmation link to<br><b>${esc(pend.email)}</b></p>
-    <p class="muted" style="margin:0">Open the email on this phone and tap <b>Confirm my email</b>. PhysioDesk opens by itself and you’re in.</p>
+    <p class="muted" style="margin:0">Open the email on this phone and tap <b>Confirm my email</b>. Junctura opens by itself and you’re in.</p>
     <p class="hint" style="margin:0">No email after a minute? Look in the spam or promotions folder.</p>
     <div class="auth-msg" id="au-msg" role="alert" style="color:var(--ok)">${msg?esc(msg):''}</div>
     <button class="btn primary block" data-act="pendCheck">${ic('check',16)} I’ve confirmed, continue</button>
@@ -2241,8 +2243,8 @@ ACT.pendResend=async()=>{const pend=getPending();const{error}=await sb().auth.re
 ACT.pendCancel=()=>{clearPending();AUTH_MODE='up';authScreen()};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getPending()&&PENDING_PASS&&!SESSION)pendTry(true)});
 async function handleAuthUrl(url){
-  // physiodesk://auth/callback#access_token=…&refresh_token=…&type=signup  (or #error=…&error_description=…)
-  if(!url||!/^physiodesk:\/\/auth/i.test(url))return false;
+  // junctura://auth/callback#access_token=…&refresh_token=…&type=signup  (or #error=…&error_description=…)
+  if(!url||!/^junctura:\/\/auth/i.test(url))return false;
   const frag=new URLSearchParams((url.split('#')[1]||url.split('?')[1]||''));
   if(frag.get('error')||frag.get('error_description')){
     const d=frag.get('error_description')||'';
@@ -2263,15 +2265,15 @@ function confirmedScreen(name){
     root.innerHTML=`<div class="auth"><div class="auth-card" style="text-align:center;align-items:center">
       <span class="bigicon ok">${ic('check',38)}</span>
       <h1 class="h1">Email confirmed</h1>
-      <p style="margin:0">Welcome to PhysioDesk${name?', '+esc(String(name).split(' ')[0]):''}. Your 30-day free trial has started.</p>
-      <button class="btn primary block" id="cf-go">Open PhysioDesk</button></div></div>`;
+      <p style="margin:0">Welcome to Junctura${name?', '+esc(String(name).split(' ')[0]):''}. Your 30-day free trial has started.</p>
+      <button class="btn primary block" id="cf-go">Open Junctura</button></div></div>`;
     const done=()=>{clearTimeout(t);res()};const t=setTimeout(done,3500);$('#cf-go').onclick=done;
   });
 }
 
 /* ---------- account settings ---------- */
 function accountCard(){
-  if(!cloudOn())return`<section class="card set-list"><h2 class="h2">Account</h2><p class="hint">This copy of PhysioDesk keeps everything on this phone only.</p></section>`;
+  if(!cloudOn())return`<section class="card set-list"><h2 class="h2">Account</h2><p class="hint">This copy of Junctura keeps everything on this phone only.</p></section>`;
   const t=trialLeft(),last=CLOUD.at?Math.round((Date.now()-CLOUD.at)/60000):null;
   return`<section class="card set-list"><div class="card-head" style="margin:0"><div><h2 class="h2">Account</h2><div class="muted small">${esc(SESSION?SESSION.user.email:'')}</div></div>${cloudBadge()}</div>
     ${PROFILE?`<div class="svc-row" style="border:0;padding:0"><span class="info"><b>${PROFILE.plan==='trial'?'Free trial':esc(PROFILE.plan[0].toUpperCase()+PROFILE.plan.slice(1))+' plan'}</b><div class="muted small">${t!=null?(t?t+' day'+(t>1?'s':'')+' left':'Trial ended'):'Active'}</div></span></div>`:''}
@@ -2331,7 +2333,7 @@ function apptStart(a){const d=pd(a.date);const[h,m]=a.time.split(':').map(Number
 function calPayload(a){
   const c=getClient(a.clientId),sv=getSvc(a.serviceId),p=getPlace(a.placeId),st=apptStart(a);
   return{calendarId:String(S.settings.calId),title:(c?.name||'Client')+' · '+sv.name+(a.status==='noshow'?' (no-show)':''),start:st,end:st+(+a.duration||45)*60000,
-    location:p.own?(c?.address||''):p.name,description:[c?.phone?'Phone: '+c.phone:'',a.notes||'','Booked in PhysioDesk'].filter(Boolean).join('\n')};
+    location:p.own?(c?.address||''):p.name,description:[c?.phone?'Phone: '+c.phone:'',a.notes||'','Booked in Junctura'].filter(Boolean).join('\n')};
 }
 async function syncCalendar(){
   const P=CALP();if(!P)return;
@@ -2351,7 +2353,7 @@ async function syncCalendar(){
       a.calSig=sig;a.calCal=st.calId;changed=true;
     }
     calWarned=false;
-  }catch(e){if(!calWarned){calWarned=true;toast('Could not update your calendar. Check PhysioDesk still has calendar access.')}}
+  }catch(e){if(!calWarned){calWarned=true;toast('Could not update your calendar. Check Junctura still has calendar access.')}}
   if(changed)saveQuiet();
 }
 function notifId(s){let h=7;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%2000000000+1}
@@ -2387,7 +2389,7 @@ async function askNotifPermission(){const L=LNP();if(!L)return false;try{let p=a
 async function pickCalendar(){
   const P=CALP();if(!P){toast('This works in the installed app.');return}
   try{
-    if(!(await P.requestAccess()).granted){toast('Allow calendar access: phone Settings → Apps → PhysioDesk → Permissions → Calendar');return}
+    if(!(await P.requestAccess()).granted){toast('Allow calendar access: phone Settings → Apps → Junctura → Permissions → Calendar');return}
     const r=await P.listCalendars();
     const L=(r.calendars||[]).filter(c=>c.writable).sort((a,b)=>(b.accountType==='com.google')-(a.accountType==='com.google')||(b.primary-a.primary));
     if(!L.length){toast('No calendar on this phone can be written to. Add your Google account in the phone settings first.');return}
@@ -2397,11 +2399,11 @@ async function pickCalendar(){
   }catch(e){toast('Could not read the calendars: '+(e&&e.message||e))}
 }
 ACT.pickCal=()=>pickCalendar();
-ACT.smsAllow=()=>smsAsk().then(ok=>{render();scheduleSync();toast(ok?'Reminders will go out by SMS':'Allow SMS for PhysioDesk: phone Settings → Apps → PhysioDesk → Permissions → SMS')});
+ACT.smsAllow=()=>smsAsk().then(ok=>{render();scheduleSync();toast(ok?'Reminders will go out by SMS':'Allow SMS for Junctura: phone Settings → Apps → Junctura → Permissions → SMS')});
 ACT.smsTest=async()=>{
   const P=SMSP();if(!P){toast('This works in the installed app.');return}
   const num=$('#sms-test').value.trim();if(!num){toast('Type your own number first');return}
-  if(!await smsAsk()){toast('Allow SMS for PhysioDesk first');render();return}
+  if(!await smsAsk()){toast('Allow SMS for Junctura first');render();return}
   const fake={clientId:'',date:addDays(today(),1),time:'10:00',placeId:'own'};
   const text=reminderText(fake).replace(/^Hello ,/,'Hello,')+' (test)';
   const r=await P.sendNow({phone:smsNumber(num),text});
@@ -2473,8 +2475,8 @@ function clearDemo(){const isD=x=>x.demo;S.measures=(S.measures||[]).filter(x=>!
 
 /* ================= welcome ================= */
 function welcome(){
-  openModal(`<div class="form"><span class="logo" style="width:48px;height:48px;border-radius:14px">${ic('pulse',26)}</span>
-    <div><h2 class="h1" style="font-size:25px">Welcome to PhysioDesk</h2><p class="muted" style="margin:6px 0 0">Your appointments, clients, treatment notes and income in one place, for the clinics you work at and your own clients. Everything stays on this phone.</p></div>
+  openModal(`<div class="form"><span class="logo" style="width:48px;height:48px;border-radius:14px">${jmark(26)}</span>
+    <div><h2 class="h1" style="font-size:25px">Welcome to Junctura</h2><p class="muted" style="margin:6px 0 0">Your appointments, clients, treatment notes and income in one place, for the clinics you work at and your own clients. Everything stays on this phone.</p></div>
     <div class="r2"><label class="fld"><span>Your name</span><input id="o-name" placeholder="e.g. Karim" value="${esc(S.settings.therapist)}"></label>
     <label class="fld"><span>Currency</span><input id="o-cur" value="${esc(S.settings.currency)}" maxlength="4"></label></div>
     <label class="fld"><span>Clinic you work at <i>(more in Settings)</i></span><input id="o-place" placeholder="e.g. Hamra Physio Center"></label>
