@@ -327,6 +327,30 @@ a{color:var(--primary)}
 .excard span{font-size:12px;color:var(--muted)}
 .lib .ex .exthumb{width:64px}
 
+/* ---------- clinical tools ---------- */
+.pbar-wrap{display:flex;align-items:center;gap:12px}
+.pbar{flex:1;height:10px;border-radius:6px;background:var(--sunk);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--primary),var(--ok))}
+.goals{display:flex;flex-direction:column;gap:6px}
+.goal-row{display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 11px;font-size:14px}
+.goal-row .gchk{width:20px;height:20px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;flex:none;color:#fff}
+.goal-row.on{background:var(--ok-soft);border-color:transparent}
+.goal-row.on .gchk{background:var(--ok);border-color:var(--ok)}
+.goal-row.on span:last-child{text-decoration:line-through;color:var(--muted)}
+.flags{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 12px}
+.spark{width:110px;height:34px;flex:none}
+@media (max-width:420px){.spark{width:72px}}
+.pkg{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.pkg:first-of-type{border-top:0;padding-top:0}
+.pkg .info b{display:block}.pkg .info span{font-size:13px;color:var(--muted)}
+.sigbox{position:relative;border:2px dashed var(--line);border-radius:16px;background:#fff;display:flex;justify-content:center;padding:4px;touch-action:none}
+.sigbox.signed{border-style:solid}
+.sigpad{width:100%;height:auto;aspect-ratio:3/1;display:block;touch-action:none;cursor:crosshair}
+.sigbox .btn{position:absolute;top:6px;right:6px;color:#33415c}
+.sighint{position:absolute;bottom:10px;left:0;right:0;text-align:center;color:#9aa6bd;font-size:13px;pointer-events:none}
+.sigbox.signed .sighint{display:none}
+button.row[disabled]{opacity:.45}
+
 /* ---------- modal sheet ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .scrim{position:absolute;inset:0;background:rgb(6 12 23/.55);opacity:0;transition:opacity .18s}
@@ -418,13 +442,14 @@ function defaults(){return{
     {id:'s2',name:'Initial assessment',price:40,duration:60,color:SVC_COLORS[1]},
     {id:'s3',name:'Home visit',price:50,duration:60,color:SVC_COLORS[2]},
     {id:'s4',name:'Sports massage',price:35,duration:45,color:SVC_COLORS[3]}],
-  clients:[],appts:[],expenses:[],notes:[]
+  clients:[],appts:[],expenses:[],notes:[],measures:[],waitlist:[]
 }}
 function migrate(d){
   const def=defaults();d={...def,...d,settings:{...def.settings,...(d.settings||{})}};
   if(!Array.isArray(d.places)||!d.places.length)d.places=def.places;
   if(!d.places.some(p=>p.own))d.places.unshift(def.places[0]);
   if(!Array.isArray(d.calTrash))d.calTrash=[];
+  if(!Array.isArray(d.measures))d.measures=[];if(!Array.isArray(d.waitlist))d.waitlist=[];
   for(const a of d.appts){if(!a.placeId)a.placeId='own';if(!a.kind)a.kind='private';if(a.cut==null)a.cut=0}
   if(String(d.settings.reminder||'').includes('{clinic}'))d.settings.reminder=def.settings.reminder;
   delete d.settings.clinic;
@@ -437,7 +462,7 @@ function load(){
 let S=load();
 let saveFailed=false;
 function saveQuiet(){try{localStorage.setItem(KEY,JSON.stringify(S));saveFailed=false}catch(e){if(!saveFailed)toast('This device would not save. Export a backup now.');saveFailed=true}}
-function save(){saveQuiet();scheduleSync()}
+function save(){try{applyPackages()}catch(e){}saveQuiet();scheduleSync()}
 
 /* ================= helpers ================= */
 const $=(s,r=document)=>r.querySelector(s);
@@ -459,7 +484,7 @@ function fmtTs(t){if(S.settings.clock==='24')return fmtT(t);let[h,m]=t.split(':'
 const fmtD=(s,o)=>pd(s).toLocaleDateString('en-GB',o||{weekday:'short',day:'numeric',month:'short'});
 const monthLabel=ym=>pd(ym+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
 function relDay(s){const t=today();if(s===t)return'Today';if(s===addDays(t,1))return'Tomorrow';if(s===addDays(t,-1))return'Yesterday';return fmtD(s)}
-function money(n){n=+n||0;const c=S.settings.currency||'$';const v=Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:2});const neg=n<0?'−':'';return /^[A-Za-z.]{2,}$/.test(c)?neg+v+' '+c:neg+c+v}
+function money(n){n=+n||0;const c=S.settings.currency||'$';const v=Math.abs(n).toLocaleString('en-US',Math.round(n*100)%100?{minimumFractionDigits:2,maximumFractionDigits:2}:{maximumFractionDigits:0});const neg=n<0?'−':'';return /^[A-Za-z.]{2,}$/.test(c)?neg+v+' '+c:neg+c+v}
 function moneyShort(n){n=+n||0;if(Math.abs(n)>=10000)return money(Math.round(n/100)/10).replace(/(\d)(\s|$)/,'$1k$2');return money(Math.round(n))}
 function hueOf(s){let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return SVC_COLORS[h%SVC_COLORS.length]}
 const initials=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
@@ -759,6 +784,7 @@ function viewCal(){
   if(mode==='month')out+=`<section class="card swipe">${monthGrid(d)}</section>`;
   else if(mode==='agenda')out+=`<section class="card">${agenda(d)}</section>`;
   else out+=`<section class="card swipe" style="display:flex;flex-direction:column;gap:14px">${weekStrip(d)}${daySummary(d)}${dayTimeline(d)}</section>`;
+  if(mode!=='month')out+=waitlistCard();
   return out;
 }
 function weekStrip(d){
@@ -871,13 +897,18 @@ function viewClient(id){
     <div class="btn-row">
       ${c.phone?`<a class="btn soft" href="${telHref(c.phone)}" data-ext>${ic('phone',16)} Call</a><a class="btn soft" href="${waHref(c.phone,'')}" data-ext target="_blank" rel="noopener">${ic('chat',16)} WhatsApp</a>`:''}
       <button class="btn primary" data-act="newAppt" data-client="${c.id}">${ic('plus',16)} Book</button>
-      <button class="btn" data-act="editClient" data-id="${c.id}">${ic('edit',16)} Edit</button></div>
+      <button class="btn" data-act="editClient" data-id="${c.id}">${ic('edit',16)} Edit</button>
+      <button class="btn" data-act="invoiceClient" data-id="${c.id}">${ic('wallet',16)} Invoice</button></div>
+    ${c.consent?'':`<button class="banner" style="border:0;text-align:left;width:100%" data-act="consent" data-id="${c.id}">${ic('edit')}<div style="flex:1"><b>No signed consent yet</b><span class="small">Hand the phone to ${esc(c.name.split(' ')[0])} to read and sign.</span></div>${ic('right',18)}</button>`}
     <div class="stat4"><div><b>${st.done}</b><span>sessions</span></div><div><b>${money(st.paid)}</b><span>paid</span></div>
       <div><b style="${st.owed?'color:var(--warn)':''}">${money(st.owed)}</b><span>owes</span></div><div><b>${since?esc(fmtD(since,{month:'short',year:'2-digit'})):'–'}</b><span>client since</span></div></div>
     ${st.owed?`<button class="btn ok block" data-act="payAllClient" data-id="${c.id}">${ic('check',16)} Mark ${money(st.owed)} as paid</button>`:''}
   </section>
+  ${planCard(c)}
+  ${outcomesCard(c)}
   <section class="card" id="bodymap">${bodyMapInner(c)}</section>
   ${programCard(c)}
+  ${packagesCard(c)}
   <div class="grid2">
   <section class="card"><div class="card-head"><h2 class="h2">Coming up</h2></div>
     ${st.upcoming.length?`<div class="list">${st.upcoming.map(a=>apptRow(a,{showDate:true,noName:true})).join('')}</div>`:`<p class="muted" style="margin:0">No sessions booked.</p>`}</section>
@@ -889,6 +920,7 @@ function viewClient(id){
     ${st.past.length?`<div class="list">${st.past.slice(0,UI.histAll?1e9:8).map(a=>apptRow(a,{showDate:true,noName:true})).join('')}</div>${st.past.length>8&&!UI.histAll?`<button class="btn sm ghost block" data-act="histAll" style="margin-top:6px">Show all ${st.past.length} sessions</button>`:''}`:`<p class="muted" style="margin:0">No past sessions.</p>`}</section>
   <section class="card"><div class="card-head"><h2 class="h2">Details</h2></div>
     ${details.length?`<dl class="kv">${details.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:`<p class="muted" style="margin:0">Add a phone number, date of birth and medical notes with Edit.</p>`}
+    ${c.consent?`<button class="btn sm soft" style="margin-top:12px" data-act="consentView" data-id="${c.id}">${ic('check',14)} Consent signed ${esc(fmtD(c.consent.at,{day:'numeric',month:'short',year:'numeric'}))}</button>`:''}
     <div class="btn-row" style="margin-top:14px"><button class="btn sm bad" data-act="deleteClient" data-id="${c.id}">${ic('trash',15)} Delete client</button></div></section>`;
 }
 function painSpark(p){
@@ -977,6 +1009,13 @@ function viewSettings(){
     :`<p class="hint">At that time the phone shows a notification. Tap it and WhatsApp opens with the message ready; tap send. WhatsApp doesn't let apps send messages on their own.${isNative()?'':' (Notifications work in the installed app.)'}</p>`}
     <label class="fld"><span>Message</span><textarea id="set-reminder" rows="3" data-change="setting" data-k="reminder">${esc(s.reminder)}</textarea></label>
     <p class="hint">{name}, {day}, {time} and {place} are filled in for each client.</p></section>
+  <section class="card set-list"><div><h2 class="h2">Invoices, letters and consent</h2><div class="muted small">Printed at the top of receipts, invoices and letters to doctors</div></div>
+    <div class="r2">${fld('docName','Name on documents','text',`placeholder="${esc(s.therapist||'e.g. Karim Haddad')}"`)}${fld('docTitle','Title','text','placeholder="Physiotherapist"')}</div>
+    <div class="r2">${fld('docReg','Registration number','text','placeholder="Order of Physiotherapists no."')}${fld('docPhone','Phone','tel')}</div>
+    <div class="r2">${fld('docEmail','Email','email')}${fld('docAddress','Address','text')}</div>
+    <div class="svc-row" style="border:0;padding:0"><span class="info"><b>Your signature</b><div class="muted small">${s.sig?'Saved. It is added to invoices and letters.':'Not set yet'}</div></span>${s.sig?`<img src="${s.sig}" alt="Your signature" style="height:34px;background:#fff;border-radius:6px;padding:2px">`:''}<button class="btn sm" data-act="mySig">${s.sig?'Change':'Sign'}</button></div>
+    <label class="fld"><span>Consent text clients sign</span><textarea id="set-consent" rows="4" data-change="setting" data-k="consent">${esc(s.consent||CONSENT_DEFAULT)}</textarea></label>
+    <label class="fld" style="max-width:220px"><span>Next invoice number</span><input id="set-invNext" type="number" min="1" value="${+s.invNext||1}" data-change="setting" data-k="invNext" data-num></label></section>
   <section class="card set-list"><h2 class="h2">Privacy & look</h2>
     <div class="svc-row" style="border:0;padding:0"><span class="info"><b>PIN lock</b><div class="muted small">${s.pinHash?'On: the app asks for your PIN when opened':'Off: anyone holding the phone can open client files'}</div></span>
       ${s.pinHash?`<button class="btn sm" data-act="removePin">Turn off</button>`:`<button class="btn sm primary" data-act="setPin">${ic('lock',14)} Set PIN</button>`}</div>
@@ -1036,12 +1075,13 @@ function apptDetail(a){
     <div class="eyebrow">${esc(s.name)}</div>
     <h2 class="h1" style="font-size:23px"><a href="#client-${c?.id}" data-act="toClient" data-id="${c?.id||''}" style="color:inherit;text-decoration:none">${esc(c?.name||'Unknown client')}</a></h2>
     <div class="muted">${esc(fmtD(a.date,{weekday:'long',day:'numeric',month:'long'}))} · ${fmtT(a.time)}–${fmtT(end)}</div>
-    <div class="btn-row" style="margin-top:8px">${statusBadge(a)}${payBadge(a)}${a.seriesId?`<span class="badge b-cancel">${ic('repeat',12)} ${seriesN.indexOf(a)+1} of ${seriesN.length}</span>`:''}</div></div>
+    <div class="btn-row" style="margin-top:8px">${statusBadge(a)}${payBadge(a)}${a.seriesId?`<span class="badge b-cancel">${ic('repeat',12)} ${seriesN.indexOf(a)+1} of ${seriesN.length}</span>`:''}${(()=>{const n=sessionNo(a),c=getClient(a.clientId);return n?`<span class="badge b-sched">Session ${n}${c.plan.total?' of '+c.plan.total:''}</span>`:''})()}${a.pkg?`<span class="badge b-paid">Package</span>`:''}</div></div>
     <button class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
   ${a.status==='scheduled'?`<div class="r2"><button class="btn ok" data-act="apptStatus" data-id="${a.id}" data-v="done" data-paid="1">${ic('check',16)} Done & paid</button><button class="btn soft" data-act="apptStatus" data-id="${a.id}" data-v="done">Done, pay later</button></div>
    <div class="r2"><button class="btn bad" data-act="apptStatus" data-id="${a.id}" data-v="noshow">No-show</button><button class="btn" data-act="apptStatus" data-id="${a.id}" data-v="cancelled">Cancelled</button></div>`
    :`<div class="btn-row"><button class="btn sm" data-act="apptStatus" data-id="${a.id}" data-v="scheduled">Back to booked</button>${countsIncome(a)?`<button class="btn sm ${a.paid?'':'ok'}" data-act="apptPaid" data-id="${a.id}">${a.paid?'Mark as unpaid':ic('check',14)+(a.kind==='clinic'?' Clinic paid me':' Mark as paid')}</button>`:a.status==='noshow'?`<button class="btn sm" data-act="apptPaid" data-id="${a.id}">Charged a no-show fee</button>`:''}</div>`}
   ${countsIncome(a)&&a.paid&&a.kind!=='clinic'?`<div><div class="eyebrow" style="margin-bottom:6px">Paid by</div><div class="chips">${METHODS.map(m=>`<button data-act="apptMethod" data-id="${a.id}" data-v="${m}" class="${(a.method||'Cash')===m?'on':''}">${m}</button>`).join('')}</div></div>`:''}
+  ${waitOffer(a)}
   <dl class="kv"><dt>Where</dt><dd>${esc(pl.name)}${pl.own?'':a.kind==='clinic'?' · clinic’s client':' · your client'}</dd>
     ${a.kind==='clinic'&&!pl.own?`<dt>Clinic pays you</dt><dd>${money(a.price)}</dd>`:`<dt>Client pays</dt><dd>${money(a.price)}</dd>${+a.cut?`<dt>Clinic keeps</dt><dd>−${money(a.cut)}${a.cutPct?` (${a.cutPct}%)`:''}</dd><dt>You get</dt><dd>${money(earn(a))}</dd>`:''}`}
     ${+a.cost?`<dt>Session cost</dt><dd>−${money(a.cost)}</dd>`:''}<dt>Your profit</dt><dd>${money(profit)}</dd>
@@ -1049,6 +1089,7 @@ function apptDetail(a){
   <div class="btn-row">
     ${c?.phone?`<a class="btn soft" href="${waHref(c.phone,reminderText(a))}" data-ext target="_blank" rel="noopener">${ic('chat',16)} Remind</a><a class="btn soft" href="${telHref(c.phone)}" data-ext>${ic('phone',16)} Call</a>`:''}
     ${c?.phone&&countsIncome(a)&&a.paid&&a.kind!=='clinic'?`<a class="btn soft" href="${waHref(c.phone,receiptText(a))}" data-ext target="_blank" rel="noopener">${ic('wallet',16)} Receipt</a>`:''}
+    ${countsIncome(a)?`<button class="btn soft" data-act="invoiceAppt" data-id="${a.id}">${ic('wallet',16)} ${a.paid?'Receipt':'Invoice'}</button>`:''}
     <button class="btn soft" data-act="newNote" data-client="${a.clientId}" data-appt="${a.id}">${ic('note',16)} Note</button>
     <button class="btn" data-act="rebook" data-id="${a.id}">${ic('repeat',16)} Book again</button>
     <button class="btn" data-act="apptEdit" data-id="${a.id}">${ic('edit',16)} Edit</button>
@@ -1201,7 +1242,7 @@ const ACT={
   apptStatus:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.status=el.dataset.v;if(el.dataset.paid){a.paid=true;a.method=a.method||'Cash'}
     if(a.status==='scheduled'||a.status==='cancelled')a.paid=false;
     save();render();replaceModal(apptDetail(a));
-    toast({done:a.paid?'Marked done and paid':'Marked done',noshow:'Marked as no-show',cancelled:'Marked as cancelled',scheduled:'Back to booked'}[a.status])},
+    toast(a.status==='cancelled'&&S.waitlist.length&&a.date>=today()?`Cancelled. ${S.waitlist.length} on the waitlist could take this slot`:{done:a.paid?'Marked done and paid':'Marked done',noshow:'Marked as no-show',cancelled:'Marked as cancelled',scheduled:'Back to booked'}[a.status])},
   apptPaid:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.paid=!a.paid;a.method=a.method||'Cash';save();render();replaceModal(apptDetail(a))},
   apptMethod:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);a.method=el.dataset.v;save();replaceModal(apptDetail(a))},
   apptEdit:el=>{const a=S.appts.find(x=>x.id===el.dataset.id);replaceModal(apptForm(a,false),updateSplit)},
@@ -1266,6 +1307,7 @@ const INPUT={
 };
 const CHANGE={
   setting:el=>{const k=el.dataset.k;let v=el.value;if('num'in el.dataset)v=+v;if(k==='currency')v=v.trim()||'$';S.settings[k]=v;
+    if(['docName','docTitle','docReg','docPhone','docEmail','docAddress','consent','invNext'].includes(k)){save();toast('Saved');return}
     if(k==='startHour'&&S.settings.endHour<=v)S.settings.endHour=Math.min(24,v+1);if(k==='endHour'&&S.settings.startHour>=v)S.settings.startHour=Math.max(0,v-1);
     save();if(k==='theme')applyTheme();if(k!=='reminder'&&k!=='therapist'&&k!=='cc')render();
     if(k==='remindMode'&&v==='sms'&&isNative()){smsAsk().then(ok=>{render();toast(ok?'Saved. Reminders go out by SMS automatically':'SMS not allowed. You get the WhatsApp notification instead')})}
@@ -1539,6 +1581,7 @@ function followText(c,kind){const first=(c.name||'').split(' ')[0],me=S.settings
 function followUps(){
   const t=today(),md=t.slice(5),L=[];
   for(const c of S.clients)if(c.dob&&c.dob.slice(5)===md)L.push({c,kind:'bday',sub:'Birthday today'+(age(c.dob)!==''?` · turns ${age(c.dob)}`:'')});
+  for(const c of S.clients)if(reviewDue(c))L.push({c,kind:'review',sub:`Progress review due · ${planSessions(c).done} sessions done`});
   for(const c of S.clients){
     if(c.followSnooze&&c.followSnooze>t)continue;
     const st=clientStats(c.id);if(st.done<2||st.next||!st.last)continue;
@@ -1546,9 +1589,9 @@ function followUps(){
     L.push({c,kind:'lapsed',sub:`Last seen ${d<35?Math.round(d/7)+' weeks':Math.round(d/30)+' month'+(d>=45?'s':'')} ago${c.condition?' · '+c.condition:''}`});
   }
   if(!L.length)return'';
-  return`<section class="card"><div class="card-head"><div><h2 class="h2">Reach out</h2><div class="muted small">A short message keeps clients coming back</div></div></div>
+  return`<section class="card"><div class="card-head"><div><h2 class="h2">Reach out</h2><div class="muted small">Reviews due, birthdays and clients to check on</div></div></div>
     <div class="list">${L.slice(0,5).map(({c,kind,sub})=>`<div class="row">${avatar(c)}<div class="info"><b>${esc(c.name)}</b><span>${kind==='bday'?ic('gift',13).replace('class="ic"','class="ic" style="display:inline;vertical-align:-2px;color:var(--accent)"')+' ':''}${esc(sub)}</span></div>
-      <div class="btn-row" style="flex-wrap:nowrap;gap:6px">${c.phone?`<a class="btn sm soft" href="${waHref(c.phone,followText(c,kind))}" data-ext target="_blank" rel="noopener">${ic('chat',15)} ${kind==='bday'?'Wish':'Check in'}</a>`:`<a class="btn sm" href="#client-${c.id}">Open</a>`}
+      <div class="btn-row" style="flex-wrap:nowrap;gap:6px">${kind!=='review'&&c.phone?`<a class="btn sm soft" href="${waHref(c.phone,followText(c,kind))}" data-ext target="_blank" rel="noopener">${ic('chat',15)} ${kind==='bday'?'Wish':'Check in'}</a>`:`<a class="btn sm" href="#client-${c.id}">Open</a>`}
       ${kind==='lapsed'?`<button class="btn sm ghost icon" data-act="snooze" data-id="${c.id}" aria-label="Hide for a month">${ic('x',15)}</button>`:''}</div></div>`).join('')}</div></section>`;
 }
 ACT.snooze=el=>{const c=getClient(el.dataset.id);c.followSnooze=addDays(today(),30);save();render();toast(`${c.name} is hidden from Reach out for a month`)};
@@ -1677,6 +1720,296 @@ function libGrid(L){if(!L.length)return`<p class="muted">No exercise matches tha
   return L.slice(0,100).map(r=>`<button class="excard" data-act="exInfo" data-n="${r[0]}">${thumb(r[0])}<div><b>${esc(r[2])}</b><span>#${r[0]}${r[4]?` · ${r[4].includes('S')?'supervised':'advanced'}`:''}</span></div></button>`).join('')}
 CHANGE.libCat=el=>{UI.libCat=el.value;UI.libQ='';render()};
 INPUT.libQ=el=>{UI.libQ=el.value;if(el.value.trim())UI.libCat='all';const g=$('#lib-grid');g.innerHTML=libGrid(exMatches(UI.libCat??'0',UI.libQ));PhysioAnim.watch(g);const s=$('#lib-cat');if(s)s.value=UI.libCat};
+
+/* ================= professional clinical tools ================= */
+/* Plan of care, outcome measures, session packages, invoices and letters, consent, waitlist. */
+const RED_FLAGS=['Unexplained weight loss','Night pain not eased by rest','Fever or feeling unwell','New bladder or bowel changes','Numbness in the saddle area','Recent significant trauma','History of cancer','Progressive weakness or numbness','Chest pain or breathlessness','Painful swollen calf'];
+const MEASURES=[
+  {k:'pain',label:'Pain',unit:'/10',max:10,lower:true,hint:'0 = no pain, 10 = worst imaginable'},
+  {k:'rom',label:'Range of motion',unit:'°',max:180,hint:'Goniometer reading in degrees'},
+  {k:'mmt',label:'Strength',unit:'/5',max:5,hint:'Manual muscle test, 0 to 5'},
+  {k:'psfs',label:'Function (PSFS)',unit:'/10',max:10,hint:'How well the client can do this activity: 0 = unable, 10 = as before the problem'},
+  {k:'custom',label:'Other',unit:'',max:100,hint:'Any measure: girth in cm, single-leg stance in seconds, steps…'}];
+const mDef=k=>MEASURES.find(m=>m.k===k)||MEASURES[4];
+const ROM_NAMES=['Knee flexion','Knee extension','Hip flexion','Hip abduction','Hip internal rotation','Hip external rotation','Ankle dorsiflexion','Ankle plantarflexion','Shoulder flexion','Shoulder abduction','Shoulder external rotation','Shoulder internal rotation','Elbow flexion','Elbow extension','Wrist flexion','Wrist extension','Neck rotation','Neck flexion','Lumbar flexion','Lumbar extension'];
+
+/* ---------- plan of care ---------- */
+function planSessions(c){
+  const p=c.plan;if(!p)return{done:0,list:[]};
+  const list=S.appts.filter(a=>a.clientId===c.id&&a.status==='done'&&a.date>=(p.start||'0')).sort(byTime);
+  return{done:list.length,list};
+}
+function sessionNo(a){
+  const c=getClient(a.clientId);if(!c||!c.plan||c.plan.status==='discharged'||a.status==='cancelled'||a.status==='noshow'||a.date<(c.plan.start||'0'))return 0;
+  const before=S.appts.filter(x=>x.clientId===c.id&&x.date>=(c.plan.start||'0')&&(x.status==='done'||(x.status==='scheduled'&&a.status==='scheduled'))&&(x.date+x.time)<(a.date+a.time)).length;
+  return before+1;
+}
+function reviewDue(c){const p=c.plan;if(!p||p.status==='discharged'||!+p.every)return false;const d=planSessions(c).done;return d>0&&d-(p.reviewed||0)>=+p.every}
+function planCard(c){
+  const p=c.plan;
+  if(!p)return`<section class="card"><div class="card-head"><div><h2 class="h2">Plan of care</h2><div class="muted small">Diagnosis, number of sessions, goals and red-flag screening</div></div><button class="btn sm soft" data-act="editPlan" data-id="${c.id}">${ic('plus',14)} Start a plan</button></div></section>`;
+  const{done}=planSessions(c),total=+p.total||0,pct=total?Math.min(100,done/total*100):0;
+  const flags=(p.flags||[]).length;
+  const goals=p.goals||[];const met=goals.filter(g=>g.done).length;
+  const dis=p.status==='discharged';
+  return`<section class="card"><div class="card-head"><div><div class="eyebrow">Plan of care${dis?' · discharged '+esc(fmtD(p.dischargedAt||today(),{day:'numeric',month:'short',year:'numeric'})):' · since '+esc(fmtD(p.start||today(),{day:'numeric',month:'short'}))}</div><h2 class="h2">${esc(p.diag||'No diagnosis entered')}</h2></div>
+    <button class="btn sm" data-act="editPlan" data-id="${c.id}">${ic('edit',14)} Edit</button></div>
+    ${flags?`<div class="banner" style="background:var(--bad-soft);margin-bottom:12px">${ic('alert')}<div><b>${flags} red flag${flags>1?'s':''} noted</b><span class="small">${esc(p.flags.join(', '))}</span></div></div>`:''}
+    <div class="pbar-wrap"><div class="pbar"><i style="width:${pct.toFixed(0)}%"></i></div><span class="small"><b>${done}</b>${total?' of '+total:''} session${(total||done)===1?'':'s'}</span></div>
+    ${reviewDue(c)?`<div class="banner" style="margin-top:12px">${ic('clock')}<div style="flex:1"><b>Progress review due</b><span class="small">${done} sessions done. Re-measure, check the goals and update the plan.</span></div><button class="btn sm" data-act="planReviewed" data-id="${c.id}">Reviewed</button></div>`:''}
+    ${goals.length?`<div class="eyebrow" style="margin:14px 0 6px">Goals · ${met} of ${goals.length} met</div><div class="goals">${goals.map(g=>`<button class="goal-row ${g.done?'on':''}" data-act="toggleGoal" data-id="${c.id}" data-g="${g.id}"><span class="gchk">${g.done?ic('check',14):''}</span><span>${esc(g.t)}</span></button>`).join('')}</div>`:''}
+    ${p.summary&&dis?`<p class="hint" style="margin-top:10px;white-space:pre-wrap">${esc(p.summary)}</p>`:''}
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn sm soft" data-act="letter" data-id="${c.id}" data-kind="${dis?'discharge':'progress'}">${ic('note',14)} ${dis?'Discharge letter':'Progress report'}</button>
+      ${dis?`<button class="btn sm" data-act="newPlan" data-id="${c.id}">New plan</button>`:`<button class="btn sm" data-act="discharge" data-id="${c.id}">Discharge</button>`}</div></section>`;
+}
+function planForm(c){
+  const p=c.plan&&c.plan.status!=='discharged'?c.plan:{start:today(),total:8,every:6,goals:[],flags:[]};
+  return`<form class="form" data-form="plan" data-id="${c.id}">
+  <div class="card-head" style="margin:0"><div><h2 class="h2">Plan of care</h2><div class="muted small">${esc(c.name)}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <label class="fld"><span>Diagnosis / working impression</span><input id="pl-diag" name="diag" value="${esc(p.diag||c.condition||'')}" placeholder="e.g. Right patellofemoral pain"></label>
+  <div class="r3"><label class="fld"><span>Start</span><input id="pl-start" type="date" name="start" value="${p.start||today()}"></label>
+  <label class="fld"><span>Sessions</span><input id="pl-total" type="number" min="1" name="total" value="${p.total||8}" inputmode="numeric"></label>
+  <label class="fld"><span>Review every</span><input id="pl-every" type="number" min="0" name="every" value="${p.every??6}" inputmode="numeric"></label></div>
+  <label class="fld"><span>Goals <i>(one per line)</i></span><textarea id="pl-goals" name="goals" rows="4" placeholder="Climb stairs without pain in 4 weeks&#10;Return to 5 km running by March">${esc((p.goals||[]).map(g=>g.t).join('\n'))}</textarea></label>
+  <div class="fld"><span>Red-flag screening <i>(tick any that apply)</i></span><div class="flags">${RED_FLAGS.map((f,i)=>`<label class="chk small" style="font-weight:500"><input type="checkbox" name="flag" value="${esc(f)}" ${(p.flags||[]).includes(f)?'checked':''}> ${esc(f)}</label>`).join('')}</div></div>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save plan</button></div></form>`;
+}
+FORMS.plan=(f,fd)=>{
+  const c=getClient(f.dataset.id);const old=c.plan&&c.plan.status!=='discharged'?c.plan:{};
+  const lines=String(fd.get('goals')||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const goals=lines.map(t=>{const g=(old.goals||[]).find(x=>x.t===t);return g||{id:uid(),t,done:false}});
+  c.plan={...old,diag:String(fd.get('diag')||'').trim(),start:fd.get('start')||today(),total:Math.max(1,+fd.get('total')||1),every:Math.max(0,+fd.get('every')||0),goals,flags:fd.getAll('flag'),status:'active'};
+  if(!c.condition&&c.plan.diag)c.condition=c.plan.diag;
+  save();closeModal();render();toast('Plan saved');
+};
+ACT.editPlan=el=>openModal(planForm(getClient(el.dataset.id)));
+ACT.newPlan=el=>{const c=getClient(el.dataset.id);c.planHistory=(c.planHistory||[]).concat(c.plan?[c.plan]:[]);c.plan=null;openModal(planForm(c))};
+ACT.toggleGoal=el=>{const c=getClient(el.dataset.id);const g=c.plan.goals.find(x=>x.id===el.dataset.g);g.done=!g.done;g.doneAt=g.done?today():'';save();render();if(g.done)toast('Goal met')};
+ACT.planReviewed=el=>{const c=getClient(el.dataset.id);c.plan.reviewed=planSessions(c).done;save();render();toast('Review recorded')};
+ACT.discharge=el=>{const c=getClient(el.dataset.id);openModal(`<form class="form" data-form="discharge" data-id="${c.id}"><div class="card-head" style="margin:0"><div><h2 class="h2">Discharge ${esc(c.name)}</h2><div class="muted small">${planSessions(c).done} sessions in this plan</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <label class="fld"><span>Discharge summary</span><textarea id="dc-sum" name="summary" rows="5" placeholder="Outcome, goals met, advice and home program to continue">${esc(c.plan.summary||'')}</textarea></label>
+  <label class="chk"><input type="checkbox" id="dc-letter" name="letter" checked> Make a discharge letter now</label>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Discharge</button></div></form>`)};
+FORMS.discharge=(f,fd)=>{const c=getClient(f.dataset.id);c.plan.status='discharged';c.plan.dischargedAt=today();c.plan.summary=String(fd.get('summary')||'').trim();save();const mk=fd.get('letter')==='on';closeModal(()=>{if(mk)letterModal(c,'discharge')});render();toast(c.name+' discharged')};
+
+/* ---------- outcome measures ---------- */
+function measureSeries(cid){
+  const by={};
+  for(const m of S.measures.filter(m=>m.clientId===cid).sort((a,b)=>(a.date+(a.at||'')).localeCompare(b.date+(b.at||'')))){const k=m.kind+'|'+m.name;(by[k]=by[k]||{kind:m.kind,name:m.name,pts:[]}).pts.push(m)}
+  // pain scores from treatment notes join the pain series
+  const notes=S.notes.filter(n=>n.clientId===cid&&n.pain!==''&&n.pain!=null).map(n=>({date:n.date,value:+n.pain,note:1}));
+  if(notes.length){const k='pain|Pain';const s=by[k]=by[k]||{kind:'pain',name:'Pain',pts:[]};s.pts=s.pts.concat(notes).sort((a,b)=>a.date.localeCompare(b.date))}
+  return Object.values(by);
+}
+function spark(pts,max,lower){
+  const W=110,H=34,n=pts.length;if(n<2)return'';
+  const x=i=>4+(W-8)*i/(n-1),y=v=>H-4-(H-8)*Math.max(0,Math.min(1,v/max));
+  const better=lower?pts[n-1].value<pts[0].value:pts[n-1].value>pts[0].value,same=pts[n-1].value===pts[0].value;
+  const col=same?'var(--muted)':better?'var(--ok)':'var(--bad)';
+  return`<svg viewBox="0 0 ${W} ${H}" class="spark" aria-hidden="true"><polyline points="${pts.map((p,i)=>fx(x(i))+','+fx(y(+p.value))).join(' ')}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round"/><circle cx="${fx(x(n-1))}" cy="${fx(y(+pts[n-1].value))}" r="3.4" fill="${col}"/></svg>`;
+}
+function outcomesCard(c){
+  const ser=measureSeries(c.id);
+  return`<section class="card"><div class="card-head"><div><h2 class="h2">Outcome measures</h2><div class="muted small">Pain, range of motion, strength and function over time</div></div><button class="btn sm soft" data-act="addMeasure" data-id="${c.id}">${ic('plus',14)} Measure</button></div>
+  ${ser.length?`<div class="list">${ser.map(s=>{const d=mDef(s.kind),f=s.pts[0],l=s.pts[s.pts.length-1],ch=+l.value-+f.value;const good=d.lower?ch<0:ch>0;
+    return`<div class="row" style="cursor:default"><div class="info"><b>${esc(s.name)}</b><span>${esc(d.label)} · ${s.pts.length} reading${s.pts.length>1?'s':''} · last ${esc(fmtD(l.date,{day:'numeric',month:'short'}))}</span></div>${spark(s.pts,d.max,d.lower)}<div class="end"><span class="amt">${fmtNum(l.value)}${d.unit}</span>${s.pts.length>1&&ch?`<span class="small" style="color:${good?'var(--ok)':'var(--bad)'};font-weight:700">${ch>0?'+':''}${fmtNum(ch)}${d.unit==='/10'||d.unit==='/5'?'':d.unit}</span>`:'<span class="small muted">first</span>'}</div></div>`}).join('')}</div>`
+  :`<p class="muted" style="margin:0">Record a baseline at the first session, then re-measure at each review to show progress.</p>`}</section>`;
+}
+const fmtNum=v=>(Math.round(+v*10)/10).toLocaleString('en-US');
+const fx=n=>(+n).toFixed(1);
+ACT.addMeasure=el=>{const c=getClient(el.dataset.id);openModal(`<form class="form" data-form="measure" data-id="${c.id}"><div class="card-head" style="margin:0"><div><h2 class="h2">New measurement</h2><div class="muted small">${esc(c.name)}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <div class="r2"><label class="fld"><span>Type</span><select id="ms-kind" name="kind" data-change="msKind">${MEASURES.map(m=>`<option value="${m.k}">${m.label}</option>`).join('')}</select></label>
+  <label class="fld"><span>Date</span><input id="ms-date" type="date" name="date" value="${today()}"></label></div>
+  <label class="fld"><span id="ms-name-lbl">What</span><input id="ms-name" name="name" list="ms-list" value="Pain" placeholder="e.g. Right knee flexion" autocomplete="off"><datalist id="ms-list"></datalist></label>
+  <label class="fld"><span>Value <i id="ms-unit">/10</i></span><input id="ms-val" type="number" step="any" name="value" required inputmode="decimal"></label>
+  <p class="hint" id="ms-hint">${esc(MEASURES[0].hint)}</p>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`,m=>{msKindUpdate();setTimeout(()=>m.querySelector('#ms-val').focus(),250)})};
+function msKindUpdate(){const k=$('#ms-kind').value,d=mDef(k);$('#ms-unit').textContent=d.unit?`(${d.unit.replace('/','out of ')})`:'';$('#ms-hint').textContent=d.hint;
+  const sug=k==='rom'?ROM_NAMES.flatMap(n=>['Right '+n.toLowerCase(),'Left '+n.toLowerCase()]):k==='mmt'?['Quadriceps','Hamstrings','Gluteus medius','Hip flexors','Rotator cuff','Deltoid','Grip','Calf']:k==='psfs'?['Climbing stairs','Walking 30 minutes','Lifting a child','Running','Sleeping on the side','Getting up from a chair','Reaching overhead']:[];
+  $('#ms-list').innerHTML=sug.map(s=>`<option value="${esc(s)}">`).join('');
+  const nm=$('#ms-name');if(k==='pain'){nm.value='Pain'}else if(nm.value==='Pain')nm.value='';
+  $('#ms-name-lbl').textContent=k==='psfs'?'Activity the client finds hard':k==='rom'?'Joint and movement':k==='mmt'?'Muscle group':'What';}
+CHANGE.msKind=()=>msKindUpdate();
+FORMS.measure=(f,fd)=>{const name=String(fd.get('name')||'').trim()||mDef(fd.get('kind')).label;const v=+fd.get('value');const d=mDef(fd.get('kind'));
+  if(isNaN(v)||v<0||(d.max&&d.k!=='custom'&&v>d.max)){toast(`Enter a value from 0 to ${d.max}`);return}
+  S.measures.push({id:uid(),clientId:f.dataset.id,kind:fd.get('kind'),name,value:v,date:fd.get('date')||today(),at:new Date().toISOString()});save();closeModal();render();toast('Measurement saved')};
+
+/* ---------- packages ---------- */
+function pkgUsed(pk){return S.appts.filter(a=>a.pkg===pk.id).length}
+function applyPackages(){
+  for(const a of S.appts){if(a.pkg&&a.status!=='done'){a.pkg='';if(a.method==='Package'){a.paid=false;a.method='Cash'}}}
+  const byC={};for(const c of S.clients)if(c.packages&&c.packages.length)byC[c.id]=c;
+  for(const a of S.appts.filter(a=>a.status==='done'&&!a.pkg&&!a.paid&&byC[a.clientId]).sort(byTime)){
+    const pk=byC[a.clientId].packages.find(p=>a.date>=(p.bought||'0')&&pkgUsed(p)<+p.sessions);
+    if(!pk)continue;
+    a.pkg=pk.id;a.paid=true;a.method='Package';
+    if(a.kind!=='clinic'){a.price=r2(+pk.price/+pk.sessions);a.cut=r2(a.price*(+a.cutPct||0)/100)}
+  }
+}
+function packagesCard(c){
+  const L=c.packages||[];
+  return`<section class="card"><div class="card-head"><div><h2 class="h2">Session packages</h2><div class="muted small">Prepaid bundles. Done sessions are taken from them automatically.</div></div><button class="btn sm soft" data-act="addPkg" data-id="${c.id}">${ic('plus',14)} Package</button></div>
+  ${L.length?L.map(pk=>{const u=pkgUsed(pk),left=+pk.sessions-u;return`<div class="pkg"><div class="info"><b>${esc(pk.name)}</b><span>${money(pk.price)} · bought ${esc(fmtD(pk.bought,{day:'numeric',month:'short'}))}${pk.paid?' · paid':''}</span></div>
+    <div class="pbar-wrap"><div class="pbar"><i style="width:${(u/(+pk.sessions)*100).toFixed(0)}%"></i></div><span class="small"><b>${left}</b> left of ${pk.sessions}</span></div>
+    <div class="btn-row">${pk.paid?'':`<button class="btn sm ok" data-act="pkgPaid" data-id="${c.id}" data-p="${pk.id}">${ic('check',14)} Mark paid</button>`}<button class="btn sm ghost" data-act="pkgDel" data-id="${c.id}" data-p="${pk.id}">Remove</button></div></div>`}).join(''):`<p class="muted" style="margin:0">Sell a course like 10 sessions for a set price. Each done session is counted off.</p>`}</section>`;
+}
+ACT.addPkg=el=>{const c=getClient(el.dataset.id);const sv=S.services[0]||{price:30};openModal(`<form class="form" data-form="pkg" data-id="${c.id}"><div class="card-head" style="margin:0"><div><h2 class="h2">New package</h2><div class="muted small">${esc(c.name)}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <div class="r2"><label class="fld"><span>Sessions</span><input id="pk-n" type="number" min="1" name="sessions" value="10" inputmode="numeric" data-input="pkName"></label><label class="fld"><span>Price</span><input id="pk-price" type="number" min="0" step="any" name="price" value="${+sv.price*9}" inputmode="decimal"></label></div>
+  <label class="fld"><span>Name</span><input id="pk-name" name="name" value="10 sessions"></label>
+  <div class="r2" style="align-items:center"><label class="chk"><input type="checkbox" id="pk-paid" name="paid" checked> Paid now</label><label class="fld"><select id="pk-method" name="method" aria-label="Payment method">${METHODS.map(m=>`<option>${m}</option>`).join('')}</select></label></div>
+  <p class="hint">Unpaid done sessions from today on are counted off this package, oldest first.</p>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`)};
+INPUT.pkName=el=>{$('#pk-name').value=el.value+' sessions'};
+FORMS.pkg=(f,fd)=>{const c=getClient(f.dataset.id);c.packages=c.packages||[];c.packages.push({id:uid(),name:String(fd.get('name')||'').trim()||fd.get('sessions')+' sessions',sessions:Math.max(1,+fd.get('sessions')||1),price:+fd.get('price')||0,paid:fd.get('paid')==='on',method:fd.get('method'),bought:today()});save();closeModal();render();toast('Package added')};
+ACT.pkgPaid=el=>{const pk=getClient(el.dataset.id).packages.find(p=>p.id===el.dataset.p);pk.paid=true;save();render();toast('Package marked paid')};
+ACT.pkgDel=el=>{const c=getClient(el.dataset.id);ask('Remove this package?','Sessions already counted off it go back to unpaid.',[{label:'Remove',cls:'bad',run:()=>{const id=el.dataset.p;for(const a of S.appts)if(a.pkg===id){a.pkg='';a.paid=false;a.method='Cash'}c.packages=c.packages.filter(p=>p.id!==id);save();toast('Package removed')}}])};
+
+/* ---------- documents: invoices, receipts, reports (drawn as images) ---------- */
+function wrapText(ctx,text,maxW){const out=[];for(const para of String(text||'').split('\n')){let line='';for(const w of para.split(/\s+/)){const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t}out.push(line)}return out}
+async function renderDoc(d){
+  try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}
+  const W=1240,M=84,st=S.settings,INK='#0f1b2d',MUT='#5a6780',LINE='#d6deea',ACC='#2453e6';
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const F=(s,w=500,fam='Figtree')=>`${w} ${s}px ${fam}, system-ui, sans-serif`;
+  let sig=null;if(st.sig){sig=new Image();sig.src=st.sig;await new Promise(r=>{sig.onload=r;sig.onerror=r})}
+  const draw=on=>{let y=0;
+    const T=(t,X,Y,font,col=INK,al='left')=>{if(on){x.font=font;x.fillStyle=col;x.textAlign=al;x.fillText(t,X,Y)}};
+    x.font=F(24);
+    // header band
+    if(on){x.fillStyle='#ffffff';x.fillRect(0,0,W,c.height);x.fillStyle=INK;x.fillRect(0,0,W,210);x.fillStyle='#f2512f';x.fillRect(0,206,W,6)}
+    T(st.docName||st.therapist||'Physiotherapy',M,96,F(46,700,'Bricolage Grotesque'),'#eef3ff');
+    T([st.docTitle||'Physiotherapist',st.docReg?'Reg. '+st.docReg:''].filter(Boolean).join(' · '),M,140,F(26),'#a9b8d8');
+    T([st.docPhone,st.docEmail].filter(Boolean).join('   '),M,176,F(22),'#a9b8d8');
+    T(d.title,W-M,96,F(40,700,'Bricolage Grotesque'),'#eef3ff','right');
+    if(d.number)T(d.number,W-M,140,F(26,600),'#a9b8d8','right');
+    y=270;
+    // meta columns
+    const L=d.left||[],R=d.right||[];
+    L.forEach((r,i)=>{T(r[0],M,y+i*40,F(20,700),MUT);T(r[1],M+210,y+i*40,F(24,600))});
+    R.forEach((r,i)=>{T(r[0],W-M-330,y+i*40,F(20,700),MUT);T(r[1],W-M,y+i*40,F(24,600),INK,'right')});
+    y+=Math.max(L.length,R.length)*40+30;
+    for(const b of d.blocks||[]){
+      if(b.h){y+=20;T(b.h.toUpperCase(),M,y,F(19,800),ACC);y+=14;if(on){x.fillStyle=LINE;x.fillRect(M,y,W-2*M,2)}y+=36}
+      if(b.table){const cols=b.table.cols;
+        T(cols[0],M,y,F(19,700),MUT);T(cols[1],M+220,y,F(19,700),MUT);T(cols[2],W-M,y,F(19,700),MUT,'right');y+=16;if(on){x.fillStyle=LINE;x.fillRect(M,y,W-2*M,2)}y+=40;
+        for(const r of b.table.rows){x.font=F(24);const lines=wrapText(x,r[1],W-2*M-220-200);T(r[0],M,y,F(24));lines.forEach((l,i)=>T(l,M+220,y+i*32,F(24)));T(r[2],W-M,y,F(24,600),INK,'right');y+=Math.max(1,lines.length)*32+16;if(on){x.fillStyle='#eef1f6';x.fillRect(M,y-30,W-2*M,1)}}
+        for(const t of b.table.totals||[]){y+=8;T(t[0],W-M-330,y,F(t[2]?28:22,t[2]?800:600),t[2]?INK:MUT);T(t[1],W-M,y,F(t[2]?32:24,t[2]?800:600),t[2]?INK:MUT,'right');y+=t[2]?48:36}}
+      if(b.p){x.font=F(25);for(const l of wrapText(x,b.p,W-2*M)){T(l,M,y,F(25));y+=36}y+=8}
+      if(b.list){x.font=F(25);for(const it of b.list){const lines=wrapText(x,it,W-2*M-40);T('•',M,y,F(25,700),ACC);lines.forEach((l,i)=>T(l,M+34,y+i*36,F(25)));y+=lines.length*36+6}}
+      if(b.kv){for(const r of b.kv){T(r[0],M,y,F(22,600),MUT);x.font=F(24);const lines=wrapText(x,r[1],W-2*M-380);lines.forEach((l,i)=>T(l,M+380,y+i*34,F(24,600)));y+=Math.max(1,lines.length)*34+8}}
+      if(b.stamp){y+=10;const w=x.measureText?260:260;if(on){x.save();x.strokeStyle=b.stamp.col;x.lineWidth=4;x.translate(W-M-140,y+10);x.rotate(-.08);x.strokeRect(-130,-44,260,76);x.font=F(36,800);x.fillStyle=b.stamp.col;x.textAlign='center';x.fillText(b.stamp.t,0,8);x.restore()}y+=60}
+    }
+    y+=40;
+    if(d.sign){if(sig&&sig.width){if(on)x.drawImage(sig,M,y,300,300*sig.height/sig.width);y+=Math.min(140,300*sig.height/sig.width)+6}else y+=50;
+      if(on){x.fillStyle=INK;x.fillRect(M,y,320,2)}y+=34;T(st.docName||st.therapist||'',M,y,F(24,700));y+=32;T(st.docTitle||'Physiotherapist',M,y,F(21),MUT);y+=20}
+    y+=50;if(on){x.fillStyle=LINE;x.fillRect(M,y,W-2*M,2)}y+=40;
+    T(d.footer||[st.docAddress,'Thank you'].filter(Boolean).join(' · '),W/2,y,F(20),MUT,'center');
+    return y+60;
+  };
+  c.width=W;c.height=2000;const h=draw(false);c.height=Math.max(900,h);draw(true);return c;
+}
+async function shareImage(name,canvas){
+  const url=canvas.toDataURL('image/png'),b64=url.split(',')[1];
+  const Cap=window.Capacitor;
+  if(isNative()&&Cap.Plugins&&Cap.Plugins.Filesystem&&Cap.Plugins.Share){
+    try{const r=await Cap.Plugins.Filesystem.writeFile({path:name,data:b64,directory:'CACHE'});await Cap.Plugins.Share.share({title:name,files:[r.uri],dialogTitle:'Send '+name});return true}
+    catch(e){if(!/cancel/i.test(String(e&&e.message||e)))toast('Could not share: '+(e.message||e));return false}}
+  openModal(`<div class="form"><div class="card-head" style="margin:0"><h2 class="h2">${esc(name)}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div><img src="${url}" alt="${esc(name)}" style="width:100%;border-radius:12px;border:1px solid var(--line)"><p class="hint">In the installed app this opens the share menu (WhatsApp, email, Drive). Here, long-press or right-click the image to save it.</p></div>`);
+  return true;
+}
+function nextNumber(){const n=+S.settings.invNext||1;S.settings.invNext=n+1;saveQuiet();return'INV-'+String(n).padStart(4,'0')}
+async function makeInvoice(c,appts,kind){
+  if(!appts.length){toast('No sessions to put on it');return}
+  const st=S.settings,paidAll=appts.every(a=>a.paid);
+  const rows=appts.map(a=>[fmtD(a.date,{day:'numeric',month:'short',year:'numeric'}),getSvc(a.serviceId).name+(a.pkg?' (package)':''),money(a.price)]);
+  const total=sum(appts,a=>+a.price),paid=sum(appts.filter(a=>a.paid),a=>+a.price);
+  const isRec=kind==='receipt'||paidAll;
+  const num=nextNumber();
+  const d={title:isRec?'RECEIPT':'INVOICE',number:num,
+    left:[['BILLED TO',c.name],['PHONE',c.phone||'–']],right:[['DATE',fmtD(today(),{day:'numeric',month:'short',year:'numeric'})],['SESSIONS',String(appts.length)]],
+    blocks:[{table:{cols:['DATE','DESCRIPTION','AMOUNT'],rows,totals:[['Total',money(total),1],...(paid&&!paidAll?[['Paid',money(paid)],['Balance due',money(total-paid),1]]:[])]}},
+      {stamp:paidAll?{t:'PAID',col:'#11845a'}:null},
+      ...(paidAll?[{p:'Paid by '+[...new Set(appts.map(a=>a.method||'Cash'))].join(', ')+'.'}]:[{p:'Please settle the balance at your next session or by transfer. Thank you.'}])].filter(b=>!b.stamp||b.stamp),
+    sign:true};
+  const cv=await renderDoc(d);await shareImage(`${isRec?'Receipt':'Invoice'} ${num} ${c.name}.png`,cv);
+}
+ACT.invoiceAppt=el=>{const a=S.appts.find(x=>x.id===el.dataset.id);closeModal(()=>makeInvoice(getClient(a.clientId),[a]))};
+ACT.invoiceClient=el=>{const c=getClient(el.dataset.id);const st=clientStats(c.id);const m=today().slice(0,7);
+  const unpaid=st.A.filter(a=>countsIncome(a)&&!a.paid),month=st.A.filter(a=>countsIncome(a)&&a.date.startsWith(m)),last=st.A.filter(countsIncome).slice(-1);
+  openModal(`<div class="form"><div class="card-head" style="margin:0"><div><h2 class="h2">Invoice or receipt</h2><div class="muted small">${esc(c.name)}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+    <div class="list">${[['unpaid','Unpaid sessions',unpaid],['month','This month’s sessions',month],['last','Last session',last]].map(([k,l,L])=>`<button class="row" data-act="invPick" data-id="${c.id}" data-k="${k}" ${L.length?'':'disabled'}><div class="info"><b>${l}</b><span>${L.length} session${L.length===1?'':'s'} · ${money(sum(L,a=>+a.price))}</span></div>${ic('right',18)}</button>`).join('')}</div></div>`)};
+ACT.invPick=el=>{const c=getClient(el.dataset.id),st=clientStats(c.id),m=today().slice(0,7),k=el.dataset.k;
+  const L=k==='unpaid'?st.A.filter(a=>countsIncome(a)&&!a.paid):k==='month'?st.A.filter(a=>countsIncome(a)&&a.date.startsWith(m)):st.A.filter(countsIncome).slice(-1);
+  closeModal(()=>makeInvoice(c,L))};
+function letterModal(c,kind){
+  openModal(`<form class="form" data-form="letter" data-id="${c.id}" data-kind="${kind}"><div class="card-head" style="margin:0"><div><h2 class="h2">${kind==='discharge'?'Discharge letter':'Progress report'}</h2><div class="muted small">${esc(c.name)}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+    <label class="fld"><span>To</span><input id="lt-to" name="to" value="${esc(c.referral?(/^dr/i.test(c.referral)?c.referral:c.referral):'')}" placeholder="e.g. Dr. Sami Khoury, orthopaedics"></label>
+    <label class="fld"><span>${kind==='discharge'?'Summary and advice':'Assessment and plan'}</span><textarea id="lt-body" name="body" rows="5">${esc(kind==='discharge'?(c.plan&&c.plan.summary)||'':'')}</textarea></label>
+    <p class="hint">The letter adds the diagnosis, sessions attended, outcome measures, goals and home program by itself.</p>
+    <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('note',16)} Make letter</button></div></form>`);
+}
+ACT.letter=el=>letterModal(getClient(el.dataset.id),el.dataset.kind);
+FORMS.letter=async(f,fd)=>{
+  const c=getClient(f.dataset.id),kind=f.dataset.kind,p=c.plan||{};const{done}=planSessions(c);const st=clientStats(c.id);
+  const ser=measureSeries(c.id).filter(s=>s.pts.length);
+  const blocks=[];
+  blocks.push({h:'Patient'},{kv:[['Name',c.name],['Date of birth',c.dob?fmtD(c.dob,{day:'numeric',month:'long',year:'numeric'})+(age(c.dob)!==''?` (${age(c.dob)})`:''):'–'],['Diagnosis',p.diag||c.condition||'–'],['Treatment since',p.start?fmtD(p.start,{day:'numeric',month:'long',year:'numeric'}):'–'],['Sessions attended',`${done}${p.total?' of '+p.total+' planned':''}${st.noshow?` · ${st.noshow} missed`:''}`]]});
+  if(ser.length)blocks.push({h:'Outcome measures'},{table:{cols:['MEASURE','FIRST → LATEST','CHANGE'],rows:ser.map(s=>{const d=mDef(s.kind),a=s.pts[0],b=s.pts[s.pts.length-1],ch=+b.value-+a.value;return[s.name,`${fmtNum(a.value)}${d.unit} (${fmtD(a.date,{day:'numeric',month:'short'})}) → ${fmtNum(b.value)}${d.unit} (${fmtD(b.date,{day:'numeric',month:'short'})})`,(ch>0?'+':'')+fmtNum(ch)]})}});
+  if((p.goals||[]).length)blocks.push({h:'Goals'},{list:p.goals.map(g=>(g.done?'Met: ':'In progress: ')+g.t)});
+  if(c.program&&c.program.items.length)blocks.push({h:'Home exercise program'},{list:c.program.items.map(x=>`${x.name} (${x.dose||'3 × 12'})`)});
+  const body=String(fd.get('body')||'').trim();if(body)blocks.push({h:kind==='discharge'?'Summary and advice':'Assessment and plan'},{p:body});
+  const to=String(fd.get('to')||'').trim();
+  const d={title:kind==='discharge'?'DISCHARGE':'PROGRESS',number:kind==='discharge'?'Summary':'Report',left:[['TO',to||'To whom it may concern'],['RE',c.name]],right:[['DATE',fmtD(today(),{day:'numeric',month:'short',year:'numeric'})]],blocks,sign:true};
+  const cv=await renderDoc(d);closeModal(()=>shareImage(`${kind==='discharge'?'Discharge letter':'Progress report'} ${c.name}.png`,cv));
+};
+
+/* ---------- consent and signatures ---------- */
+const CONSENT_DEFAULT='I agree to receive physiotherapy assessment and treatment. The treatment, its expected benefits and possible risks have been explained to me, and I had the chance to ask questions. I understand that I can stop treatment at any time. I agree that my personal and health information is kept securely by my physiotherapist and is only shared with my consent or when the law requires it.';
+function sigPad(id){return`<div class="sigbox"><canvas id="${id}" class="sigpad" width="900" height="300" aria-label="Signature area"></canvas><button type="button" class="btn sm ghost" data-act="sigClear" data-c="${id}">Clear</button><span class="sighint">Sign here with your finger</span></div>`}
+function mountSig(root,id){const cv=root.querySelector('#'+id);if(!cv)return;const x=cv.getContext('2d');x.lineWidth=5;x.lineCap='round';x.lineJoin='round';x.strokeStyle='#0f1b2d';cv.dataset.empty='1';let d=false,l=null;
+  const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+  cv.addEventListener('pointerdown',e=>{d=true;l=pt(e);cv.setPointerCapture(e.pointerId);cv.dataset.empty='0';cv.parentNode.classList.add('signed')});
+  cv.addEventListener('pointermove',e=>{if(!d)return;const p=pt(e);x.beginPath();x.moveTo(l[0],l[1]);x.lineTo(p[0],p[1]);x.stroke();l=p});
+  ['pointerup','pointercancel'].forEach(t=>cv.addEventListener(t,()=>{d=false}))}
+function sigData(cv){if(!cv||cv.dataset.empty==='1')return'';
+  // trim to the drawn area to keep the stored image small
+  const x=cv.getContext('2d'),{width:w,height:h}=cv,d=x.getImageData(0,0,w,h).data;let x0=w,y0=h,x1=0,y1=0;
+  for(let y=0;y<h;y+=2)for(let i=0;i<w;i+=2){if(d[(y*w+i)*4+3]){if(i<x0)x0=i;if(i>x1)x1=i;if(y<y0)y0=y;if(y>y1)y1=y}}
+  if(x1<=x0)return'';const pad=8;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(w,x1+pad);y1=Math.min(h,y1+pad);
+  const o=document.createElement('canvas');o.width=x1-x0;o.height=y1-y0;o.getContext('2d').drawImage(cv,x0,y0,o.width,o.height,0,0,o.width,o.height);return o.toDataURL('image/png')}
+ACT.sigClear=el=>{const cv=$('#'+el.dataset.c);cv.getContext('2d').clearRect(0,0,cv.width,cv.height);cv.dataset.empty='1';cv.parentNode.classList.remove('signed')};
+ACT.consent=el=>{const c=getClient(el.dataset.id);openModal(`<div class="form"><div class="card-head" style="margin:0"><div><h2 class="h2">Consent to treatment</h2><div class="muted small">${esc(c.name)} · ${esc(fmtD(today(),{day:'numeric',month:'long',year:'numeric'}))}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <p style="margin:0;white-space:pre-wrap">${esc(S.settings.consent||CONSENT_DEFAULT)}</p>${sigPad('sig-c')}
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button type="button" class="btn primary" data-act="consentSave" data-id="${c.id}">${ic('check',16)} I agree and sign</button></div></div>`,m=>mountSig(m,'sig-c'))};
+ACT.consentSave=el=>{const s=sigData($('#sig-c'));if(!s){toast('Please sign in the box first');return}const c=getClient(el.dataset.id);c.consent={at:today(),sig:s,text:S.settings.consent||CONSENT_DEFAULT};save();closeModal();render();toast('Consent signed')};
+ACT.consentView=el=>{const c=getClient(el.dataset.id);openModal(`<div class="form"><div class="card-head" style="margin:0"><div><h2 class="h2">Signed consent</h2><div class="muted small">${esc(c.name)} · ${esc(fmtD(c.consent.at,{day:'numeric',month:'long',year:'numeric'}))}</div></div><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <p style="margin:0;white-space:pre-wrap">${esc(c.consent.text||'')}</p><div class="sigbox signed"><img src="${c.consent.sig}" alt="Signature of ${esc(c.name)}" style="max-width:100%;max-height:120px"></div>
+  <div class="sheet-actions"><button type="button" class="btn bad" data-act="consentRedo" data-id="${c.id}">Sign again</button><button type="button" class="btn" data-act="close">Close</button></div></div>`)};
+ACT.consentRedo=el=>{const c=getClient(el.dataset.id);replaceModal(`<div class="form"><h2 class="h2">Consent to treatment</h2><p style="margin:0;white-space:pre-wrap">${esc(S.settings.consent||CONSENT_DEFAULT)}</p>${sigPad('sig-c')}<div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button type="button" class="btn primary" data-act="consentSave" data-id="${c.id}">${ic('check',16)} I agree and sign</button></div></div>`,m=>mountSig(m,'sig-c'))};
+ACT.mySig=()=>openModal(`<div class="form"><div class="card-head" style="margin:0"><h2 class="h2">Your signature</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div><p class="hint">It goes at the bottom of invoices, receipts and letters.</p>${sigPad('sig-me')}<div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button type="button" class="btn primary" data-act="mySigSave">${ic('check',16)} Save</button></div></div>`,m=>mountSig(m,'sig-me'));
+ACT.mySigSave=()=>{const s=sigData($('#sig-me'));if(!s){toast('Sign in the box first');return}S.settings.sig=s;save();closeModal();render();toast('Signature saved')};
+
+/* ---------- waitlist ---------- */
+function waitText(w,a){const first=String(w.name||'').split(' ')[0];return`Hello ${first}, a physiotherapy session just opened on ${fmtD(a.date,{weekday:'long',day:'numeric',month:'long'})} at ${fmtT(a.time)}. Would you like it? Reply to confirm.${S.settings.therapist?' '+S.settings.therapist:''}`}
+function waitlistCard(){
+  const L=S.waitlist||[];
+  return`<section class="card"><div class="card-head"><div><h2 class="h2">Waitlist</h2><div class="muted small">Clients who want an earlier or extra session</div></div><button class="btn sm soft" data-act="addWait">${ic('plus',14)} Add</button></div>
+  ${L.length?`<div class="list">${L.map(w=>`<div class="row" style="cursor:default">${avatar({name:w.name})}<div class="info"><b>${esc(w.name)}</b><span>${esc([w.pref,w.note].filter(Boolean).join(' · ')||'Any time')} · added ${esc(fmtD(w.added,{day:'numeric',month:'short'}))}</span></div><div class="btn-row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm soft" data-act="waitBook" data-w="${w.id}">Book</button><button class="btn sm ghost icon" data-act="waitDel" data-w="${w.id}" aria-label="Remove ${esc(w.name)}">${ic('x',15)}</button></div></div>`).join('')}</div>`:`<p class="muted" style="margin:0">When a session is cancelled, PhysioDesk suggests who to offer the slot to.</p>`}</section>`;
+}
+ACT.addWait=()=>openModal(`<form class="form" data-form="wait" autocomplete="off"><div class="card-head" style="margin:0"><h2 class="h2">Add to waitlist</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <label class="fld"><span>Client</span><input id="wt-name" name="name" list="wt-clients" required placeholder="Name"><datalist id="wt-clients">${S.clients.map(c=>`<option value="${esc(c.name)}">`).join('')}</datalist></label>
+  <label class="fld"><span>Phone <i>(if new)</i></span><input id="wt-phone" name="phone" type="tel" inputmode="tel"></label>
+  <label class="fld"><span>Preferred time</span><select id="wt-pref" name="pref">${['Any time','Mornings','Afternoons','Evenings','Weekends'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+  <label class="fld"><span>Note</span><input id="wt-note" name="note" placeholder="e.g. Needs a session before Friday"></label>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Add</button></div></form>`);
+FORMS.wait=(f,fd)=>{const name=String(fd.get('name')).trim();const c=S.clients.find(x=>x.name.toLowerCase()===name.toLowerCase());S.waitlist=S.waitlist||[];S.waitlist.push({id:uid(),name:c?c.name:name,phone:c?c.phone:String(fd.get('phone')||''),clientId:c?c.id:'',pref:fd.get('pref')==='Any time'?'':fd.get('pref'),note:String(fd.get('note')||'').trim(),added:today()});save();closeModal();render();toast('Added to the waitlist')};
+ACT.waitDel=el=>{S.waitlist=S.waitlist.filter(w=>w.id!==el.dataset.w);save();render()};
+ACT.waitBook=el=>{const w=S.waitlist.find(x=>x.id===el.dataset.w);let c=w.clientId&&getClient(w.clientId);if(!c){c={id:uid(),name:w.name,phone:w.phone,createdAt:today()};S.clients.push(c);w.clientId=c.id}
+  S.waitlist=S.waitlist.filter(x=>x.id!==w.id);save();openModal(apptForm(newApptDefaults({clientId:c.id,date:el.dataset.date,time:el.dataset.time}),true),mountApptForm)};
+function waitOffer(a){const L=S.waitlist||[];if(!L.length||a.status!=='cancelled'||a.date<today())return'';
+  return`<div class="banner" style="background:var(--primary-soft)">${ic('users')}<div style="flex:1;min-width:0"><b>Offer this slot</b><span class="small">${L.length} on the waitlist</span>
+    <div class="list" style="margin-top:6px">${L.slice(0,4).map(w=>`<div class="row" style="padding:6px 0;cursor:default"><div class="info"><b>${esc(w.name)}</b><span>${esc(w.pref||'Any time')}</span></div>${w.phone?`<a class="btn sm soft" href="${waHref(w.phone,waitText(w,a))}" data-ext target="_blank" rel="noopener">${ic('chat',14)} Offer</a>`:''}<button class="btn sm" data-act="waitBook" data-w="${w.id}" data-date="${a.date}" data-time="${a.time}">Book</button></div>`).join('')}</div></div></div>`}
 
 /* ================= phone calendar + reminder notifications (installed app only) ================= */
 const CALP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioCalendar;
@@ -1836,11 +2169,16 @@ function loadDemo(){
   const maya=cl.find(c=>c.id==='demo-c1');if(maya)maya.dob='1991-'+t.slice(5);
   const rami=cl.find(c=>c.id==='demo-c0');if(rami){rami.map={'b-abdomen':3,'b-hip-R':2,'b-thigh-R':1};rami.mapAt=addDays(t,-3);
     rami.program={items:[47,72,224,45].map(n=>({n,name:(window.EX_ALL||[]).find(r=>r[0]===n)?.[2]||'Exercise',dose:'3 × 12'})),freq:'Twice a day',note:'Walk 20 minutes a day. Avoid sitting more than 45 minutes in a row.',at:addDays(t,-3)}}
+  if(rami){rami.plan={diag:'Mechanical low back pain, L4–L5',start:addDays(t,-60),total:30,every:6,reviewed:24,status:'active',flags:[],goals:[{id:'g1',t:'Sit for 1 hour at work without pain',done:true,doneAt:addDays(t,-12)},{id:'g2',t:'Lift his 3-year-old without back pain',done:false},{id:'g3',t:'Return to football twice a week',done:false}]};
+    rami.referral='Dr. Sami Khoury, orthopaedics';
+    rami.packages=[{id:'demo-pk1',name:'10 sessions',sessions:10,price:270,paid:true,method:'Bank transfer',bought:addDays(t,-20)}];
+    [[-60,7,30,40,4],[-40,6,40,55,4],[-20,4,55,70,5],[-3,3,62,80,5]].forEach(([d,p,f,l,m],i)=>{S.measures.push({id:'demo-m'+i+'a',clientId:'demo-c0',kind:'pain',name:'Pain',value:p,date:addDays(t,d),demo:true},{id:'demo-m'+i+'b',clientId:'demo-c0',kind:'rom',name:'Lumbar flexion',value:f,date:addDays(t,d),demo:true},{id:'demo-m'+i+'c',clientId:'demo-c0',kind:'psfs',name:'Sitting at work',value:l/10,date:addDays(t,d),demo:true},{id:'demo-m'+i+'d',clientId:'demo-c0',kind:'mmt',name:'Gluteus medius',value:m,date:addDays(t,d),demo:true})});}
+  S.waitlist.push({id:'demo-w1',name:'Lea Haddad',phone:'03 222 111',pref:'Evenings',note:'Ankle sprain, wants a session this week',added:addDays(t,-1),demo:true});
   const txt=['Reports less stiffness in the morning. Manual therapy and core activation. Home: bird-dog 3×10, cat-camel.','Pain worse after long sitting. Soft tissue release, McKenzie extensions. Advised breaks every 45 min.','Good progress. Walking 30 min without pain. Progressed to bridges with band.','Range improving. Added resisted exercises. Review in 1 week.'];
   ['demo-c0','demo-c1','demo-c2'].forEach((cid,ci)=>{const A=S.appts.filter(a=>a.clientId===cid&&a.status==='done').sort(byTime);
     A.slice(-5).forEach((a,i)=>S.notes.push({id:'demo-n'+ci+i,clientId:cid,apptId:a.id,date:a.date,pain:Math.max(1,8-i-(ci%2)),text:txt[i%txt.length],demo:true}))});
 }
-function clearDemo(){const isD=x=>x.demo;S.clients=S.clients.filter(x=>!isD(x));S.appts=S.appts.filter(x=>!isD(x));S.expenses=S.expenses.filter(x=>!isD(x));S.notes=S.notes.filter(x=>!isD(x))}
+function clearDemo(){const isD=x=>x.demo;S.measures=(S.measures||[]).filter(x=>!isD(x));S.waitlist=(S.waitlist||[]).filter(x=>!isD(x));S.clients=S.clients.filter(x=>!isD(x));S.appts=S.appts.filter(x=>!isD(x));S.expenses=S.expenses.filter(x=>!isD(x));S.notes=S.notes.filter(x=>!isD(x))}
 
 /* ================= welcome ================= */
 function welcome(){

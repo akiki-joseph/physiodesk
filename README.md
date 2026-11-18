@@ -37,6 +37,19 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 * **Reach out**: birthdays to wish and clients who stopped coming, each with a ready message.
 * **Receipts**: send a receipt on WhatsApp after a paid session.
 
+**Clinical records**
+* **Plan of care** for each client: diagnosis, planned number of sessions with a progress bar ("Session 4 of 10" on each appointment), goals to tick off, a red-flag screening checklist, a reminder when a progress review is due, and discharge with a summary.
+* **Outcome measures**: pain (0–10), range of motion in degrees, strength (0–5), the Patient-Specific Functional Scale and any other measure, each with a trend line and the change since the first reading. Pain scores from treatment notes join the pain line by themselves.
+* **Consent**: the client reads the consent text and signs on the phone screen. The text can be edited in Settings.
+
+**Documents**
+* **Invoices and receipts** as a clean image with a number (INV-0001…), your details and signature, ready to send on WhatsApp or email. From an appointment, or for a client's unpaid sessions, this month's sessions or the last one.
+* **Progress reports and discharge letters** for the referring doctor, filled in by themselves with the diagnosis, sessions attended, outcome measures (first → latest), goals and home program, plus your own assessment.
+
+**Packages and waitlist**
+* **Session packages**: sell a course such as 10 sessions for a set price. Each done session is counted off, oldest first, and the client file shows how many are left.
+* **Waitlist**: keep a list of clients who want an earlier slot. When a session is cancelled, the appointment shows who to offer the slot to, with a ready WhatsApp message.
+
 **Each appointment**
 * Its status: booked, done, no-show or cancelled.
 * Paid or unpaid, and how: cash, card, bank transfer, wallet app or insurance.
