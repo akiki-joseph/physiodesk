@@ -1,4 +1,4 @@
-package com.joseph.physiodesk;
+package com.junctura.app;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

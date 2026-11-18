@@ -1,4 +1,4 @@
--- PhysioDesk cloud database.
+-- Junctura cloud database.
 -- Paste this whole file into Supabase: SQL Editor -> New query -> Run.
 -- Safe to run again: it only creates what is missing.
 

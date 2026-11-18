@@ -1,4 +1,4 @@
-package com.joseph.physiodesk;
+package com.junctura.app;
 
 import android.Manifest;
 import com.getcapacitor.JSArray;

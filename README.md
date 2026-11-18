@@ -1,6 +1,6 @@
-# PhysioDesk: Android app for a physiotherapy practice
+# Junctura: Android app for a physiotherapy practice
 
-PhysioDesk replaces the email calendar. It keeps the appointments, the clients' files, the treatment notes and the money in one app, for the clinics you work at and for your own clients. It works offline, and the data stays on the phone.
+Junctura replaces the email calendar. It keeps the appointments, the clients' files, the treatment notes and the money in one app, for the clinics you work at and for your own clients. It works offline, and the data stays on the phone.
 
 GitHub builds the APK for free in the cloud; nothing needs installing on a computer.
 
@@ -24,14 +24,14 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 
 **Phone calendar and reminders**
 * **Import from phone calendar** reads the appointments already in your Google calendar (last 12 months and next 12, repeating ones included) and adds them, with the clinic and service you pick. It never imports the same one twice.
-* **Add my sessions to the calendar automatically**: every session you book, move or cancel in PhysioDesk is updated in your Google calendar, so it also shows in Gmail and on your computer.
+* **Add my sessions to the calendar automatically**: every session you book, move or cancel in Junctura is updated in your Google calendar, so it also shows in Gmail and on your computer.
 * **Automatic SMS reminders**: 1 hour before each session (or 30 min, 2 h, 3 h, or the evening before), the phone sends the client an SMS by itself, from your own number, even when the app is closed. You get a "Reminder SMS sent" notification, and the appointment shows when it went out. Normal SMS rates of your line apply. **Settings → Client reminders → Send test SMS** tries it on your own number.
 * Prefer WhatsApp? Choose **Notify me to send it on WhatsApp**: the notification opens WhatsApp with the reminder typed, and you tap send. WhatsApp doesn't let apps send messages by themselves.
 
 **Made for physio work**
 * **Today** opens on a dial of the working day, like a goniometer: every session is an arc, a needle shows the time, and the middle counts down to the next client.
 * **Pain map**: tap where it hurts on a front and back body figure in each client's file (mild, moderate, severe).
-* **Exercise library**: 800 exercises in 40 areas. Numbers 1–500 are the clinic's rehabilitation catalogue in 25 areas (neck to hand dexterity, aquatic, return to sport, breathing and pelvic floor). Numbers 501–800 add 15 areas written for PhysioDesk: vestibular and dizziness, knee replacement, ACL, hip replacement and shoulder repair progressions, gym machines and cables, free weights, plyometrics and agility, running drills, McKenzie and spinal stabilisation, nerve mobility, jaw (TMJ), falls prevention, pregnancy and postnatal, and stretching. Each exercise has an animated anatomical figure showing the movement, with the working muscles in coral, plus its movement cue and its supervision or advanced-stage label. Open it from **Clients → Exercise library**.
+* **Exercise library**: 800 exercises in 40 areas. Numbers 1–500 are the clinic's rehabilitation catalogue in 25 areas (neck to hand dexterity, aquatic, return to sport, breathing and pelvic floor). Numbers 501–800 add 15 areas written for Junctura: vestibular and dizziness, knee replacement, ACL, hip replacement and shoulder repair progressions, gym machines and cables, free weights, plyometrics and agility, running drills, McKenzie and spinal stabilisation, nerve mobility, jaw (TMJ), falls prevention, pregnancy and postnatal, and stretching. Each exercise has an animated anatomical figure showing the movement, with the working muscles in coral, plus its movement cue and its supervision or advanced-stage label. Open it from **Clients → Exercise library**.
 * **Home exercises**: build a client's program from the library (3 sets × 12 reps by default, editable) or add your own, and send it on WhatsApp with each exercise's cue.
 * **Monthly goal**: set the income you want; a ring shows how far you are and how many more sessions it takes.
 * **Reach out**: birthdays to wish and clients who stopped coming, each with a ready message.
@@ -77,9 +77,9 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 
 Gi## Getting the APK
 
-GitHub builds `PhysioDesk.apk` every time something changes on `main` (the **Build PhysioDesk APK** run in the **Actions** tab, about 5–8 minutes). To build again without changing anything, open **Actions → Build PhysioDesk APK → Run workflow**.
+GitHub builds `Junctura.apk` every time something changes on `main` (the **Build Junctura APK** run in the **Actions** tab, about 5–8 minutes). To build again without changing anything, open **Actions → Build Junctura APK → Run workflow**.
 
-1. On the phone, open this repo on github.com and sign in → **Releases** → the newest **PhysioDesk build N** → tap **PhysioDesk.apk**.
+1. On the phone, open this repo on github.com and sign in → **Releases** → the newest **Junctura build N** → tap **Junctura.apk**.
 2. Open the downloaded file, allow installs from this source, then tap **Install**. If Play Protect warns about an unknown app, tap **More details → Install anyway** (it warns because the app isn't from the Play Store).
 
 Updates install over the old app and keep all the data, because every build is signed with the same key.
@@ -94,7 +94,7 @@ e email calendar
 
 1. On a computer, open **calendar.google.com → ⚙ Settings → Import & export → Export**. This downloads a zip with one `.ics` file per calendar. (In Outlook: **File → Save Calendar**.)
 2. Send the `.ics` file to the phone, for example by email or WhatsApp to yourself.
-3. In PhysioDesk, open **Settings → Import Google / Outlook calendar** and pick the file.
+3. In Junctura, open **Settings → Import Google / Outlook calendar** and pick the file.
 4. Choose the service and price to use, and whether past appointments count as done and paid. Then tap **Import**.
 
 Appointments from the last 12 months and the next 12 months come in. Weekly repeating events are expanded into separate sessions. Importing the same file twice doesn't create duplicates.
@@ -102,7 +102,7 @@ Appointments from the last 12 months and the next 12 months come in. Weekly repe
 ## Moving over from the email calendar
 
 1. Make sure the Gmail account is on the phone (phone **Settings → Accounts**) and its calendar syncs.
-2. In PhysioDesk open **Settings → Phone calendar → Import from phone calendar** and allow calendar access.
+2. In Junctura open **Settings → Phone calendar → Import from phone calendar** and allow calendar access.
 3. Pick the calendar with your Gmail address, the clinic, whose clients they are and the service. Then tap **Import**.
 4. To keep the calendar up to date from now on, tick **Add my sessions to the calendar automatically** and pick the same calendar.
 
@@ -116,11 +116,11 @@ To back up, tap **Back up** and save the file to Google Drive, or email it to yo
 
 ## Accounts and cloud sync
 
-When `www/config.js` holds a Supabase project URL and its public (anon) key, PhysioDesk asks therapists to sign in or create an account (30-day free trial). Each account's data is stored in Supabase and copied on every device where the therapist signs in, so a lost phone loses nothing. The app keeps working offline and syncs when the connection is back. Settings → Account shows the sync status and has Sync now, Change password, Sign out and Delete my account.
+When `www/config.js` holds a Supabase project URL and its public (anon) key, Junctura asks therapists to sign in or create an account (30-day free trial). Each account's data is stored in Supabase and copied on every device where the therapist signs in, so a lost phone loses nothing. The app keeps working offline and syncs when the connection is back. Settings → Account shows the sync status and has Sync now, Change password, Sign out and Delete my account.
 
 * Database setup: run `supabase/schema.sql` once in the Supabase SQL Editor. It creates the tables and row level security, so an account can only ever read or change its own records.
 * Settings that belong to one phone (PIN, theme, calendar link, reminder sending) stay on that phone.
-* New accounts get a "Confirm your email" screen. The link in the email opens the app (physiodesk://auth/callback), which shows "Email confirmed" and signs in. In Supabase, open **Authentication → URL Configuration**, set **Site URL** to `physiodesk://auth/callback` and add the same address under **Redirect URLs**.
+* New accounts get a "Confirm your email" screen. The link in the email opens the app (junctura://auth/callback), which shows "Email confirmed" and signs in. In Supabase, open **Authentication → URL Configuration**, set **Site URL** to `junctura://auth/callback` and add the same address under **Redirect URLs**.
 * Forgot password: the app emails a 6-digit sign-in code, then asks for a new password. Changing the password in Settings asks for the current one first.
 * Branded emails are in `supabase/email-templates`: paste `confirm-signup.html` into **Authentication → Emails → Confirm signup** and `magic-link.html` into **Magic Link**.
 * With `config.js` left empty, the app works on the phone alone, as before.

@@ -1,8 +1,8 @@
 {
-  "name": "physiodesk",
+  "name": "junctura",
   "version": "1.0.0",
   "private": true,
-  "description": "PhysioDesk: appointments, clients, treatment notes and income for a physiotherapy practice",
+  "description": "Junctura: appointments, clients, treatment notes and income for physiotherapists",
   "scripts": {
     "sync": "cap sync android"
   },
