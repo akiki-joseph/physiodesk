@@ -113,3 +113,12 @@ No Gmail on the phone? On a computer, export the calendar from **calendar.google
 All the data lives inside the app on that one phone. If the phone is lost, or the app is uninstalled, the data goes with it. The Today screen reminds you when the last backup is more than 14 days old.
 
 To back up, tap **Back up** and save the file to Google Drive, or email it to yourself. On a new phone, install the app, then go to **Settings → Restore a backup**.
+
+## Accounts and cloud sync
+
+When `www/config.js` holds a Supabase project URL and its public (anon) key, PhysioDesk asks therapists to sign in or create an account (30-day free trial). Each account's data is stored in Supabase and copied on every device where the therapist signs in, so a lost phone loses nothing. The app keeps working offline and syncs when the connection is back. Settings → Account shows the sync status and has Sync now, Change password, Sign out and Delete my account.
+
+* Database setup: run `supabase/schema.sql` once in the Supabase SQL Editor. It creates the tables and row level security, so an account can only ever read or change its own records.
+* Settings that belong to one phone (PIN, theme, calendar link, reminder sending) stay on that phone.
+* Forgot password: the app emails a 6-digit sign-in code. In Supabase, open Authentication → Email Templates → Magic Link and make sure the email shows `{{ .Token }}`.
+* With `config.js` left empty, the app works on the phone alone, as before.

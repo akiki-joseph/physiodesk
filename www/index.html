@@ -351,6 +351,20 @@ a{color:var(--primary)}
 .sigbox.signed .sighint{display:none}
 button.row[disabled]{opacity:.45}
 
+/* ---------- account ---------- */
+#auth-root{position:fixed;inset:0;z-index:85;overflow:auto;background:var(--ink)}
+.auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:28px max(16px,env(safe-area-inset-left,0px));
+  background-image:radial-gradient(120% 70% at 100% 0%,rgb(36 83 230/.35),transparent 60%),radial-gradient(90% 60% at 0% 100%,rgb(242 81 47/.2),transparent 60%)}
+.auth-card{width:100%;max-width:420px;background:var(--surface);border-radius:26px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgb(0 0 0/.35)}
+.auth-brand{display:flex;gap:12px;align-items:center}
+.auth-brand b{display:block;font-family:var(--f-display);font-size:22px;letter-spacing:-.02em}
+.auth-brand span{font-size:13px;color:var(--muted)}
+.auth-seg{width:100%}.auth-seg button{flex:1}
+.auth-msg{min-height:18px;font-size:13.5px;font-weight:600;color:var(--bad)}
+.cloudchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:5px 9px;border-radius:999px;background:rgb(255 255 255/.08);color:var(--ink-muted);white-space:nowrap}
+.card .cloudchip{background:var(--sunk);color:var(--muted)}
+.cloudchip.ok{color:var(--ok)}.cloudchip.error,.cloudchip.offline{color:var(--warn)}
+
 /* ---------- modal sheet ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .scrim{position:absolute;inset:0;background:rgb(6 12 23/.55);opacity:0;transition:opacity .18s}
@@ -418,8 +432,11 @@ button.row[disabled]{opacity:.45}
 <div id="app"></div>
 <div id="modal-root"></div>
 <div id="lock-root"></div>
+<div id="auth-root" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="file-in" hidden>
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
 <script src="exercises.js"></script>
 <script src="anim.js"></script>
 <script>
@@ -462,7 +479,7 @@ function load(){
 let S=load();
 let saveFailed=false;
 function saveQuiet(){try{localStorage.setItem(KEY,JSON.stringify(S));saveFailed=false}catch(e){if(!saveFailed)toast('This device would not save. Export a backup now.');saveFailed=true}}
-function save(){try{applyPackages()}catch(e){}saveQuiet();scheduleSync()}
+function save(){try{applyPackages()}catch(e){}saveQuiet();scheduleSync();scheduleCloud()}
 
 /* ================= helpers ================= */
 const $=(s,r=document)=>r.querySelector(s);
@@ -635,7 +652,7 @@ function viewToday(){
   let out=`<section class="today-hero">
     <div class="hero-top"><div><div class="eyebrow">${esc(fmtD(t,{weekday:'long',day:'numeric',month:'long'}))}</div>
       <h1 class="h1">${greet}${st.therapist?', '+esc(st.therapist.split(' ')[0]):''}</h1></div>
-      <a class="icon-btn" href="#setup" aria-label="Settings">${ic('gear',20)}</a></div>
+      <div class="btn-row" style="gap:6px;flex-wrap:nowrap;align-items:center">${cloudBadge()}<a class="icon-btn" href="#setup" aria-label="Settings">${ic('gear',20)}</a></div></div>
     ${dayDial(todays)}
     <div class="hero-stats">
       <div><b>${todays.length}</b><span>${todays.length?(left?left+' still to come':'all seen'):'sessions today'}</span></div>
@@ -983,6 +1000,7 @@ function viewSettings(){
   const fld=(k,label,type='text',extra='')=>`<label class="fld"><span>${label}</span><input id="set-${k}" type="${type}" value="${esc(s[k])}" data-change="setting" data-k="${k}" ${extra}></label>`;
   const hours=Array.from({length:24},(_,h)=>h);
   return`<div class="page-head"><div><h1 class="h1">Settings</h1><div class="muted">Changes save straight away</div></div></div>
+  ${accountCard()}
   <div class="grid2">
   <section class="card set-list"><h2 class="h2">You</h2>
     ${fld('therapist','Your name','text','placeholder="e.g. Karim"')}
@@ -2011,6 +2029,195 @@ function waitOffer(a){const L=S.waitlist||[];if(!L.length||a.status!=='cancelled
   return`<div class="banner" style="background:var(--primary-soft)">${ic('users')}<div style="flex:1;min-width:0"><b>Offer this slot</b><span class="small">${L.length} on the waitlist</span>
     <div class="list" style="margin-top:6px">${L.slice(0,4).map(w=>`<div class="row" style="padding:6px 0;cursor:default"><div class="info"><b>${esc(w.name)}</b><span>${esc(w.pref||'Any time')}</span></div>${w.phone?`<a class="btn sm soft" href="${waHref(w.phone,waitText(w,a))}" data-ext target="_blank" rel="noopener">${ic('chat',14)} Offer</a>`:''}<button class="btn sm" data-act="waitBook" data-w="${w.id}" data-date="${a.date}" data-time="${a.time}">Book</button></div>`).join('')}</div></div></div>`}
 
+/* ================= cloud account and sync ================= */
+/* Every record (client, session, note…) is stored per account in Supabase and copied on each device.
+   Changes are pushed when they happen and pulled on start, on return to the app and every minute.
+   The app keeps working offline and catches up when the connection is back. */
+const CFG=window.PD_CONFIG||{};
+const cloudOn=()=>!!(CFG.supabaseUrl&&CFG.supabaseKey&&window.supabase);
+let SB=null,SESSION=null,PROFILE=null;
+function sb(){if(!SB&&cloudOn())SB=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:'physiodesk.auth'}});return SB}
+const SYNC_KEY='physiodesk.sync';
+const CLOUD_KINDS=['clients','appts','expenses','notes','measures','waitlist','services','places'];
+// Settings that belong to one phone, not to the account
+const DEVICE_SETTINGS=['pinHash','autoLock','theme','calSync','calId','calName','notifAsked','smsAsked','remindMode','remindBefore','lastBackup','onboarded','lastPlace'];
+const DEVICE_APPT_FIELDS=['calEventId','calSig','calCal','sms'];
+function loadSync(){try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{uid:'',lastPull:'',hashes:{}}}catch(e){return{uid:'',lastPull:'',hashes:{}}}}
+let SYNC=loadSync();
+function saveSync(){try{localStorage.setItem(SYNC_KEY,JSON.stringify(SYNC))}catch(e){}}
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)+s.length.toString(36)}
+function cleanRec(kind,r){if(kind!=='appts')return r;const c={...r};for(const f of DEVICE_APPT_FIELDS)delete c[f];return c}
+function localRecords(){
+  const out=new Map();
+  for(const k of CLOUD_KINDS)for(const r of(S[k]||[])){if(!r||r.id==null||r.demo)continue;out.set(k+':'+r.id,{kind:k,id:String(r.id),data:cleanRec(k,r)})}
+  const st={};for(const key in S.settings)if(!DEVICE_SETTINGS.includes(key))st[key]=S.settings[key];
+  out.set('settings:main',{kind:'settings',id:'main',data:st});
+  return out;
+}
+async function pushChanges(){
+  const cur=localRecords(),rows=[],uid=SESSION.user.id;
+  for(const[key,r]of cur){const h=hashStr(JSON.stringify(r.data));if(SYNC.hashes[key]!==h)rows.push({row:{user_id:uid,kind:r.kind,id:r.id,data:r.data,deleted:false},key,h})}
+  for(const key in SYNC.hashes)if(!cur.has(key)){const i=key.indexOf(':');rows.push({row:{user_id:uid,kind:key.slice(0,i),id:key.slice(i+1),data:{},deleted:true},key,h:null})}
+  for(let i=0;i<rows.length;i+=300){
+    const part=rows.slice(i,i+300);
+    const{error}=await sb().from('records').upsert(part.map(x=>x.row),{onConflict:'user_id,kind,id'});
+    if(error)throw error;
+    for(const x of part){if(x.h)SYNC.hashes[x.key]=x.h;else delete SYNC.hashes[x.key]}
+    saveSync();
+  }
+  return rows.length;
+}
+function applyRemote(r){
+  const key=r.kind+':'+r.id;
+  if(r.kind==='settings'){const h=hashStr(JSON.stringify(r.data));if(SYNC.hashes[key]===h)return false;
+    const dev={};for(const k of DEVICE_SETTINGS)if(k in S.settings)dev[k]=S.settings[k];
+    S.settings={...defaults().settings,...r.data,...dev};SYNC.hashes[key]=h;return true}
+  if(!CLOUD_KINDS.includes(r.kind))return false;
+  const arr=S[r.kind]=S[r.kind]||[];const i=arr.findIndex(x=>String(x.id)===r.id);
+  if(r.deleted){delete SYNC.hashes[key];if(i>=0){arr.splice(i,1);return true}return false}
+  const h=hashStr(JSON.stringify(r.data));if(i>=0&&SYNC.hashes[key]===h)return false;
+  let rec=r.data;if(r.kind==='appts'&&i>=0)for(const f of DEVICE_APPT_FIELDS)if(arr[i][f]!=null)rec={...rec,[f]:arr[i][f]};
+  if(i>=0)arr[i]=rec;else arr.push(rec);SYNC.hashes[key]=h;return true;
+}
+async function pullChanges(){
+  // Read a little before the last pull so a change saved at the same moment is never missed.
+  const since=SYNC.lastPull?new Date(new Date(SYNC.lastPull).getTime()-120000).toISOString():'1970-01-01T00:00:00Z';
+  let from=0,changed=false,maxT=SYNC.lastPull;
+  for(;;){
+    const{data,error}=await sb().from('records').select('kind,id,data,deleted,updated_at').gt('updated_at',since).order('updated_at',{ascending:true}).range(from,from+999);
+    if(error)throw error;
+    for(const r of data){if(applyRemote(r))changed=true;if(!maxT||r.updated_at>maxT)maxT=r.updated_at}
+    if(data.length<1000)break;from+=1000;
+  }
+  SYNC.lastPull=maxT||SYNC.lastPull;saveSync();return changed;
+}
+const CLOUD={state:'idle',at:0,err:''};
+let cloudBusy=false,cloudAgain=false,cloudT=null;
+function setCloud(state,err){CLOUD.state=state;CLOUD.err=err||'';if(state==='ok')CLOUD.at=Date.now();const el=$('#cloud-state');if(el)el.outerHTML=cloudBadge()}
+function scheduleCloud(){if(!cloudOn()||!SESSION)return;clearTimeout(cloudT);cloudT=setTimeout(cloudSync,2500)}
+async function cloudSync(){
+  if(!cloudOn()||!SESSION)return;
+  if(cloudBusy){cloudAgain=true;return}
+  cloudBusy=true;setCloud('syncing');
+  try{
+    let changed=false;
+    if(SYNC.uid!==SESSION.user.id){
+      // First sync of this account on this phone: take the account's data first, then upload what only this phone has.
+      SYNC={uid:SESSION.user.id,lastPull:'',hashes:{}};saveSync();
+      changed=await pullChanges();
+      if(changed){S=migrate(S);saveQuiet()}
+      await pushChanges();
+    }else{await pushChanges();changed=await pullChanges()}
+    if(changed){S=migrate(S);saveQuiet();scheduleSync();const a=document.activeElement;if(!stack.length&&!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)))render()}
+    setCloud('ok');
+  }catch(e){setCloud(navigator.onLine===false?'offline':'error',e&&e.message||String(e))}
+  cloudBusy=false;if(cloudAgain){cloudAgain=false;cloudSync()}
+}
+function cloudBadge(){
+  if(!cloudOn())return'<span id="cloud-state" hidden></span>';
+  const s=CLOUD.state,t=s==='syncing'?'Syncing':s==='ok'?'Synced':s==='offline'?'Offline':s==='error'?'Not synced':'';
+  return`<span id="cloud-state" class="cloudchip ${s}" title="${esc(CLOUD.err||t)}">${ic(s==='error'||s==='offline'?'alert':s==='ok'?'check':'repeat',13)}<span>${t}</span></span>`;
+}
+async function loadProfile(){try{const{data}=await sb().from('profiles').select('name,plan,trial_ends').eq('id',SESSION.user.id).maybeSingle();PROFILE=data||null}catch(e){}}
+function trialLeft(){if(!PROFILE||PROFILE.plan!=='trial')return null;return Math.max(0,Math.ceil((new Date(PROFILE.trial_ends)-Date.now())/864e5))}
+function wipeLocal(){try{localStorage.removeItem(KEY);localStorage.removeItem(SYNC_KEY)}catch(e){}SYNC={uid:'',lastPull:'',hashes:{}};S=defaults();saveQuiet()}
+
+/* ---------- sign in / create account ---------- */
+let AUTH_MODE='in';
+function authScreen(msg){
+  const root=$('#auth-root');if(!root)return;msg=msg||UI.authMsg;
+  const m=AUTH_MODE;
+  root.innerHTML=`<div class="auth"><div class="auth-card">
+    <div class="auth-brand"><span class="logo" style="width:46px;height:46px;border-radius:14px;color:#fff">${ic('pulse',24)}</span><div><b>PhysioDesk</b><span>Appointments, clients and income for physiotherapists</span></div></div>
+    ${m==='code'?`<h1 class="h1">Sign in with a code</h1><p class="muted" style="margin:0">We email you a 6-digit code. Use it to sign in, then set a new password in Settings.</p>`
+      :`<div class="seg auth-seg"><button data-act="authMode" data-v="in" class="${m==='in'?'on':''}">Sign in</button><button data-act="authMode" data-v="up" class="${m==='up'?'on':''}">Create account</button></div>`}
+    <form class="form" data-form="auth" novalidate>
+      ${m==='up'?`<label class="fld"><span>Your name</span><input id="au-name" name="name" autocomplete="name" required placeholder="e.g. Karim Haddad"></label>`:''}
+      <label class="fld"><span>Email</span><input id="au-email" name="email" type="email" autocomplete="email" inputmode="email" required value="${esc(UI.authEmail||'')}"></label>
+      ${m==='code'?(UI.codeSent?`<label class="fld"><span>Code from the email</span><input id="au-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></label>`:'')
+        :`<label class="fld"><span>Password</span><input id="au-pass" name="password" type="password" autocomplete="${m==='up'?'new-password':'current-password'}" required minlength="8" placeholder="${m==='up'?'At least 8 characters':''}"></label>`}
+      ${m==='up'?`<label class="chk small" style="font-weight:500"><input type="checkbox" name="agree" id="au-agree" required> I agree to the terms of use and the privacy policy</label>`:''}
+      <div class="auth-msg" id="au-msg" role="alert">${msg?esc(msg):''}</div>
+      <button class="btn primary block" type="submit" id="au-go">${m==='up'?'Create account and start the free trial':m==='code'?(UI.codeSent?'Sign in':'Email me a code'):'Sign in'}</button>
+    </form>
+    ${m==='in'?`<button class="btn ghost block" data-act="authMode" data-v="code">Forgot your password?</button>`:m==='code'?`<button class="btn ghost block" data-act="authMode" data-v="in">Back to sign in</button>`:`<p class="hint" style="text-align:center">30 days free. No card needed.</p>`}
+  </div></div>`;
+  root.hidden=false;
+}
+ACT.authMode=el=>{UI.authMsg='';UI.authEmail=($('#au-email')||{}).value||UI.authEmail;AUTH_MODE=el.dataset.v;UI.codeSent=false;authScreen()};
+const authErr=e=>{const m=String(e&&e.message||e);if(/invalid login/i.test(m))return'That email and password don’t match. Check them, or use “Forgot your password?”.';if(/already registered|already been registered/i.test(m))return'An account with this email already exists. Sign in instead.';if(/password should be at least|weak/i.test(m))return'Choose a password of at least 8 characters.';if(/rate limit|too many/i.test(m))return'Too many tries. Wait a minute and try again.';if(/fetch|network/i.test(m))return'No connection. Check the internet and try again.';if(/token has expired|invalid.*otp|otp.*invalid/i.test(m))return'That code is wrong or has expired. Ask for a new one.';return m};
+FORMS.auth=async(f,fd)=>{
+  const email=String(fd.get('email')||'').trim().toLowerCase(),msg=$('#au-msg'),go=$('#au-go');UI.authEmail=email;UI.authMsg='';
+  if(!/^\S+@\S+\.\S+$/.test(email)){msg.textContent='Type a valid email address.';return}
+  go.disabled=true;msg.textContent='';
+  try{
+    if(AUTH_MODE==='up'){
+      const name=String(fd.get('name')||'').trim(),pass=String(fd.get('password')||'');
+      if(!name){msg.textContent='Type your name.';go.disabled=false;return}
+      if(pass.length<8){msg.textContent='Choose a password of at least 8 characters.';go.disabled=false;return}
+      if(fd.get('agree')!=='on'){msg.textContent='Please accept the terms and privacy policy.';go.disabled=false;return}
+      const{data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name}}});if(error)throw error;
+      if(!data.session){msg.textContent='Check your email and tap the link to confirm your account, then sign in here.';AUTH_MODE='in';go.disabled=false;return}
+      if(!S.settings.therapist)S.settings.therapist=name;
+    }else if(AUTH_MODE==='code'){
+      if(!UI.codeSent){const{error}=await sb().auth.signInWithOtp({email,options:{shouldCreateUser:false}});if(error)throw error;UI.codeSent=true;authScreen('We sent a code to '+email+'.');return}
+      const{error}=await sb().auth.verifyOtp({email,token:String(fd.get('code')||'').trim(),type:'email'});if(error)throw error;
+      UI.mustSetPassword=true;
+    }else{
+      const{error}=await sb().auth.signInWithPassword({email,password:String(fd.get('password')||'')});if(error)throw error;
+    }
+  }catch(e){msg.textContent=authErr(e);go.disabled=false}
+};
+async function onSignedIn(session){
+  SESSION=session;AUTH_MODE='in';UI.codeSent=false;$('#auth-root').hidden=true;$('#auth-root').innerHTML='';
+  await cloudSync();loadProfile().then(()=>{if(route().tab==='setup')render()});
+  if(!S.settings.onboarded&&!S.appts.length&&!S.clients.length)welcome();
+  if(UI.mustSetPassword){UI.mustSetPassword=false;ACT.changePass()}
+  render();
+}
+function bootCloud(){
+  if(!cloudOn())return false;
+  const root=$('#auth-root');root.hidden=false;root.innerHTML=`<div class="auth"><div class="auth-card" style="align-items:center"><span class="logo" style="width:46px;height:46px;border-radius:14px;color:#fff">${ic('pulse',24)}</span><p class="muted">Opening PhysioDesk…</p></div></div>`;
+  sb().auth.getSession().then(({data})=>{if(data&&data.session)onSignedIn(data.session);else authScreen()}).catch(()=>authScreen());
+  sb().auth.onAuthStateChange((ev,session)=>{
+    if(ev==='SIGNED_IN'&&session&&(!SESSION||SESSION.user.id!==session.user.id))onSignedIn(session);
+    else if(ev==='TOKEN_REFRESHED'&&session)SESSION=session;
+    else if(ev==='SIGNED_OUT'){SESSION=null;PROFILE=null;AUTH_MODE='in';authScreen()}
+  });
+  setInterval(()=>{if(!document.hidden)cloudSync()},60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudSync()});
+  window.addEventListener('online',()=>cloudSync());
+  return true;
+}
+
+/* ---------- account settings ---------- */
+function accountCard(){
+  if(!cloudOn())return`<section class="card set-list"><h2 class="h2">Account</h2><p class="hint">This copy of PhysioDesk keeps everything on this phone only.</p></section>`;
+  const t=trialLeft(),last=CLOUD.at?Math.round((Date.now()-CLOUD.at)/60000):null;
+  return`<section class="card set-list"><div class="card-head" style="margin:0"><div><h2 class="h2">Account</h2><div class="muted small">${esc(SESSION?SESSION.user.email:'')}</div></div>${cloudBadge()}</div>
+    ${PROFILE?`<div class="svc-row" style="border:0;padding:0"><span class="info"><b>${PROFILE.plan==='trial'?'Free trial':esc(PROFILE.plan[0].toUpperCase()+PROFILE.plan.slice(1))+' plan'}</b><div class="muted small">${t!=null?(t?t+' day'+(t>1?'s':'')+' left':'Trial ended'):'Active'}</div></span></div>`:''}
+    <p class="hint">Your data is saved in your account and on this phone. ${last!=null?'Last synced '+(last<1?'just now':last+' min ago')+'.':''}${CLOUD.state==='error'?' Last try failed: '+esc(CLOUD.err):''}</p>
+    <div class="btn-row"><button class="btn" data-act="syncNow">${ic('repeat',15)} Sync now</button><button class="btn" data-act="changePass">${ic('lock',15)} Change password</button><button class="btn" data-act="signOut">Sign out</button></div>
+    <button class="btn sm bad" style="align-self:flex-start" data-act="deleteAccount">${ic('trash',14)} Delete my account</button></section>`;
+}
+ACT.syncNow=async()=>{await cloudSync();render();toast(CLOUD.state==='ok'?'Everything is synced':'Could not sync: '+(CLOUD.err||'no connection'))};
+ACT.changePass=()=>openModal(`<form class="form" data-form="newpass"><div class="card-head" style="margin:0"><h2 class="h2">New password</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <label class="fld"><span>New password</span><input id="np-1" name="p1" type="password" autocomplete="new-password" minlength="8" required></label>
+  <label class="fld"><span>Type it again</span><input id="np-2" name="p2" type="password" autocomplete="new-password" minlength="8" required></label>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">${ic('check',16)} Save</button></div></form>`);
+FORMS.newpass=async(f,fd)=>{const a=String(fd.get('p1')),b=String(fd.get('p2'));if(a.length<8){toast('Use at least 8 characters');return}if(a!==b){toast('The two passwords are different');return}
+  const{error}=await sb().auth.updateUser({password:a});if(error){toast(authErr(error));return}closeModal();toast('Password changed')};
+ACT.signOut=async()=>{await cloudSync();const pending=CLOUD.state!=='ok';
+  ask('Sign out?',pending?'Some changes are not uploaded yet, because there is no connection. If you sign out now they are lost.':'Your data stays in your account. This phone’s copy is removed until you sign in again.',[{label:'Sign out',cls:'bad',run:()=>{(async()=>{try{await sb().auth.signOut()}catch(e){}wipeLocal();SESSION=null;render();authScreen()})();}}])};
+ACT.deleteAccount=()=>openModal(`<form class="form" data-form="delacct"><div class="card-head" style="margin:0"><h2 class="h2">Delete your account</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
+  <p style="margin:0">This permanently deletes your account and every client, session, note and invoice in it, on all your devices. It can’t be undone. Make a backup first if you might need the data.</p>
+  <label class="fld"><span>Type DELETE to confirm</span><input id="da-c" name="c" autocomplete="off"></label>
+  <div class="sheet-actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn bad" type="submit">${ic('trash',16)} Delete forever</button></div></form>`);
+FORMS.delacct=async(f,fd)=>{if(String(fd.get('c')).trim()!=='DELETE'){toast('Type DELETE in capitals');return}
+  const{error}=await sb().rpc('delete_my_account');if(error){toast('Could not delete: '+error.message);return}
+  UI.authMsg='Your account and its data were deleted.';try{await sb().auth.signOut()}catch(e){}wipeLocal();SESSION=null;closeModal();render();authScreen()};
+
+
 /* ================= phone calendar + reminder notifications (installed app only) ================= */
 const CALP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioCalendar;
 const LNP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications;
@@ -2195,8 +2402,9 @@ function welcome(){
 /* ================= boot ================= */
 applyTheme();
 render();
+const cloudMode=bootCloud();
 if(S.settings.pinHash)lockNow();
-else if(!S.settings.onboarded&&!S.appts.length)welcome();
+else if(!cloudMode&&!S.settings.onboarded&&!S.appts.length)welcome();
 if(LNP()){
   LNP().addListener('localNotificationActionPerformed',ev=>{
     const a=S.appts.find(x=>x.id===(ev&&ev.notification&&ev.notification.extra&&ev.notification.extra.apptId));if(!a)return;
