@@ -120,5 +120,7 @@ When `www/config.js` holds a Supabase project URL and its public (anon) key, Phy
 
 * Database setup: run `supabase/schema.sql` once in the Supabase SQL Editor. It creates the tables and row level security, so an account can only ever read or change its own records.
 * Settings that belong to one phone (PIN, theme, calendar link, reminder sending) stay on that phone.
-* Forgot password: the app emails a 6-digit sign-in code. In Supabase, open Authentication → Email Templates → Magic Link and make sure the email shows `{{ .Token }}`.
+* New accounts get a "Confirm your email" screen. The link in the email opens the app (physiodesk://auth/callback), which shows "Email confirmed" and signs in. In Supabase, open **Authentication → URL Configuration**, set **Site URL** to `physiodesk://auth/callback` and add the same address under **Redirect URLs**.
+* Forgot password: the app emails a 6-digit sign-in code, then asks for a new password. Changing the password in Settings asks for the current one first.
+* Branded emails are in `supabase/email-templates`: paste `confirm-signup.html` into **Authentication → Emails → Confirm signup** and `magic-link.html` into **Magic Link**.
 * With `config.js` left empty, the app works on the phone alone, as before.
