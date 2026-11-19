@@ -1,0 +1,41 @@
+name: Publish the Junctura website
+
+# The website holds the page clients open from the exercise link the app sends.
+# It reuses the app's exercise animator, catalogue, fonts and cloud settings.
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'www/anim.js', 'www/exercises.js', 'www/config.js', 'www/fonts/**', '.github/workflows/site.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Put the site together
+        run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          cp www/anim.js www/exercises.js www/config.js _site/
+          mkdir -p _site/fonts && cp www/fonts/*.woff2 _site/fonts/
+          touch _site/.nojekyll
+          ls -R _site | head -40
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

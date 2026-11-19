@@ -31,8 +31,8 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 **Made for physio work**
 * **Today** opens on a dial of the working day, like a goniometer: every session is an arc, a needle shows the time, and the middle counts down to the next client.
 * **Pain map**: tap where it hurts on a front and back body figure in each client's file (mild, moderate, severe).
-* **Exercise library**: 800 exercises in 40 areas. Numbers 1–500 are the clinic's rehabilitation catalogue in 25 areas (neck to hand dexterity, aquatic, return to sport, breathing and pelvic floor). Numbers 501–800 add 15 areas written for Junctura: vestibular and dizziness, knee replacement, ACL, hip replacement and shoulder repair progressions, gym machines and cables, free weights, plyometrics and agility, running drills, McKenzie and spinal stabilisation, nerve mobility, jaw (TMJ), falls prevention, pregnancy and postnatal, and stretching. Each exercise has an animated anatomical figure showing the movement, with the working muscles in coral, plus its movement cue and its supervision or advanced-stage label. Open it from **Clients → Exercise library**.
-* **Home exercises**: build a client's program from the library (3 sets × 12 reps by default, editable) or add your own, and send it on WhatsApp with each exercise's cue.
+* **Exercise library**: 800 exercises in 40 areas. Numbers 1–500 are the clinic's rehabilitation catalogue in 25 areas (neck to hand dexterity, aquatic, return to sport, breathing and pelvic floor). Numbers 501–800 add 15 areas written for Junctura: vestibular and dizziness, knee replacement, ACL, hip replacement and shoulder repair progressions, gym machines and cables, free weights, plyometrics and agility, running drills, McKenzie and spinal stabilisation, nerve mobility, jaw (TMJ), falls prevention, pregnancy and postnatal, and stretching. Each exercise has an animated figure with a real body shape. The working muscles are drawn on the body in coral and glow brighter as the effort builds; a faint target pose and an arrow show where the movement goes; a caption says what to do at each moment (move slowly, hold, return slowly, relax). Each also has its movement cue and its supervision or advanced-stage label. Open it from **Clients → Exercise library**.
+* **Home exercises**: build a client's program from the library (3 sets × 12 reps by default, editable) or add your own. **Send to the client** puts it on a private web page and sends the link on WhatsApp. The client sees each exercise animated with its dose, cue and the muscles it works, can follow a guided session (it counts the reps, times the holds, rests between sets, can count out loud and keeps the screen on) and ticks each exercise when done. The program card in the app shows on which of the last 7 days the client did them. Changing the program updates the same link; deleting the client removes the page.
 * **Monthly goal**: set the income you want; a ring shows how far you are and how many more sessions it takes.
 * **Reach out**: birthdays to wish and clients who stopped coming, each with a ready message.
 * **Receipts**: send a receipt on WhatsApp after a paid session.
@@ -124,3 +124,13 @@ When `www/config.js` holds a Supabase project URL and its public (anon) key, Jun
 * Forgot password: the app emails a 6-digit sign-in code, then asks for a new password. Changing the password in Settings asks for the current one first.
 * Branded emails are in `supabase/email-templates`: paste `confirm-signup.html` into **Authentication → Emails → Confirm signup** and `magic-link.html` into **Magic Link**.
 * With `config.js` left empty, the app works on the phone alone, as before.
+
+## The client exercise page (website)
+
+The page clients open from their exercise link lives in `site/` and is published on GitHub Pages by the **Publish the Junctura website** workflow, together with the app's exercise animations and catalogue. Set it up once:
+
+1. In this repo on GitHub open **Settings → Pages** and under **Build and deployment → Source** choose **GitHub Actions**.
+2. Open **Actions → Publish the Junctura website → Run workflow**. The site appears at `https://akiki-joseph.github.io/physiodesk/` (the client page is `…/p/`). After that it republishes by itself when `site/` or the exercises change.
+3. Run `supabase/schema.sql` again in the Supabase SQL Editor. It adds the `shared_programs` table: each program is stored under a long random code that only its link contains, and the page can read that one program and tick its days, nothing else.
+
+If the website address changes (for example a custom domain), change `siteUrl` in `www/config.js`. Without the cloud, or when the phone is offline, the link carries the program itself after the `#`, so it still opens (without the ticks reaching the app).
