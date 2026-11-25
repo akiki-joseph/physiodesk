@@ -17,6 +17,8 @@
 @font-face{font-family:"Manrope";src:url(fonts/manrope.woff2) format("woff2");font-weight:200 800;font-display:swap}
 /* Junctura palette: graphite, indigo for actions, mint for progress, signal coral for the needle and alerts. */
 :root{
+  --sat:var(--safe-area-inset-top,env(safe-area-inset-top,0px)); --sab:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));
+  --sal:var(--safe-area-inset-left,env(safe-area-inset-left,0px)); --sar:var(--safe-area-inset-right,env(safe-area-inset-right,0px));
   --bg:#f3f4f8; --surface:#ffffff; --sunk:#e9eaf1; --line:#dcdee8; --text:#14151b; --muted:#5a5d70;
   --primary:#5b4bff; --primary-2:#3d2fd6; --on-primary:#ffffff; --primary-soft:#ecebff;
   --accent:#ff7a59; --accent-soft:#ffe8e1; --mint:#2ee6a6;
@@ -64,7 +66,7 @@ a{color:var(--primary)}
 .num{font-variant-numeric:tabular-nums}
 
 /* ---------- shell: floating dock (phone) / ink rail (desktop) ---------- */
-.nav{position:fixed;z-index:30;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));
+.nav{position:fixed;z-index:30;left:max(12px,var(--sal));right:max(12px,var(--sar));bottom:calc(10px + var(--sab));
   display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:center;background:color-mix(in srgb,var(--ink) 94%,transparent);
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:24px;padding:6px;box-shadow:0 10px 30px rgb(6 12 23/.35)}
 .nav a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;color:var(--ink-muted);font-size:10.5px;font-weight:600;text-decoration:none;border-radius:16px;min-width:0}
@@ -73,7 +75,7 @@ a{color:var(--primary)}
 .nav .add{justify-self:center;width:50px;height:50px;border-radius:17px;border:0;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;box-shadow:0 6px 18px rgb(91 75 255/.45)}
 .nav .add:active{transform:scale(.95)}
 .nav .brand{display:none}
-.main{padding-block:16px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.main{padding-block:calc(16px + var(--sat)) 120px;padding-left:max(16px,var(--sal));padding-right:max(16px,var(--sar))}
 .wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 @media (min-width:900px){
   .nav{left:0;right:auto;top:0;bottom:0;width:232px;border-radius:0;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:22px 14px;background:var(--ink);box-shadow:none}
@@ -81,7 +83,7 @@ a{color:var(--primary)}
   .nav .add{order:-1;width:auto;height:auto;justify-self:stretch;border-radius:14px;padding:12px;margin-bottom:12px;display:flex;gap:8px;justify-content:center;font-weight:700;font-size:14.5px}
   .nav .add::after{content:"New session"}
   .nav .brand{order:-2;display:flex;align-items:center;gap:10px;padding:0 8px 20px;font-family:var(--f-display);font-weight:700;font-size:20px;color:var(--on-ink);letter-spacing:-.01em}
-  .main{margin-left:232px;padding-block:28px 48px;padding-left:max(36px,env(safe-area-inset-left,0px));padding-right:max(36px,env(safe-area-inset-right,0px))}
+  .main{margin-left:232px;padding-block:calc(28px + var(--sat)) 48px;padding-left:max(36px,var(--sal));padding-right:max(36px,var(--sar))}
 }
 .logo{width:32px;height:32px;border-radius:10px;background:#5b4bff;color:#fff;display:grid;place-items:center}
 
@@ -363,7 +365,7 @@ button.row[disabled]{opacity:.45}
 
 /* ---------- account ---------- */
 #auth-root{position:fixed;inset:0;z-index:85;overflow:auto;background:var(--ink)}
-.auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:28px max(16px,env(safe-area-inset-left,0px));
+.auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:calc(28px + var(--sat)) max(16px,var(--sal)) calc(28px + var(--sab));
   background-image:radial-gradient(120% 70% at 100% 0%,rgb(91 75 255/.38),transparent 60%),radial-gradient(90% 60% at 0% 100%,rgb(46 230 166/.14),transparent 60%)}
 .auth-card{width:100%;max-width:420px;background:var(--surface);border-radius:26px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgb(0 0 0/.35)}
 .auth-brand{display:flex;gap:12px;align-items:center}
@@ -381,8 +383,8 @@ button.row[disabled]{opacity:.45}
 /* ---------- modal sheet ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .scrim{position:absolute;inset:0;background:rgb(6 12 23/.55);opacity:0;transition:opacity .18s}
-.sheet{position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--surface);border-radius:26px 26px 0 0;
-  padding:20px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));
+.sheet{position:relative;width:100%;max-width:560px;max-height:calc(92vh - var(--sat));overflow:auto;background:var(--surface);border-radius:26px 26px 0 0;
+  padding:20px max(18px,var(--sar)) calc(20px + var(--sab)) max(18px,var(--sal));
   transform:translateY(24px);opacity:0;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .18s}
 .modal.in .scrim{opacity:1}
 .modal.in .sheet{transform:none;opacity:1}
@@ -424,7 +426,7 @@ button.row[disabled]{opacity:.45}
 .swatches input:checked + span{border-color:var(--text)}
 
 /* ---------- lock + toast ---------- */
-.lock{position:fixed;inset:0;z-index:80;background:var(--ink);color:var(--on-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+.lock{position:fixed;inset:0;z-index:80;background:var(--ink);color:var(--on-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:calc(24px + var(--sat)) 24px calc(24px + var(--sab))}
 .lock .muted{color:var(--ink-muted)}
 .pin-dots{display:flex;gap:14px}
 .pin-dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--on-ink)}
@@ -434,7 +436,7 @@ button.row[disabled]{opacity:.45}
 .pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
 .pad button{height:64px;border-radius:20px;border:0;background:rgb(255 255 255/.08);color:var(--on-ink);font-size:24px;font-weight:600;font-family:var(--f-display)}
 .pad button.ghost{background:none;font-size:14px;color:var(--ink-muted)}
-#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(10px);z-index:90;background:var(--text);color:var(--bg);
+#toast{position:fixed;left:50%;bottom:calc(96px + var(--sab));transform:translateX(-50%) translateY(10px);z-index:90;background:var(--text);color:var(--bg);
   padding:10px 16px;border-radius:14px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);text-align:center}
 #toast.on{opacity:1;transform:translateX(-50%)}
 @media (min-width:900px){#toast{bottom:40px}}
@@ -571,7 +573,9 @@ const jmark=(z=20)=>`<svg width="${z}" height="${z}" viewBox="0 0 100 100" aria-
 const ic=(n,s=20)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
 
 /* ================= theme ================= */
-function applyTheme(){const t=S.settings.theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme}
+function applyTheme(){const t=S.settings.theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme;
+  // status bar icons: light on the dark theme, dark on the light one
+  const SB=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.SystemBars;if(SB){const dark=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);try{SB.setStyle({style:dark?'DARK':'LIGHT'})}catch(e){}}}
 
 /* ================= stats ================= */
 function stats(from,to){
@@ -1038,8 +1042,8 @@ function viewSettings(){
   <div class="grid2">
   <section class="card set-list"><h2 class="h2">Client reminders</h2>
     <label class="fld"><span>Remind me to message the client</span><select id="set-remindBefore" data-change="setting" data-k="remindBefore">${[['0','Off'],['30','30 minutes before'],['60','1 hour before'],['120','2 hours before'],['180','3 hours before'],['eve','The evening before, at 8 pm']].map(([v,l])=>`<option value="${v}" ${String(s.remindBefore)===v?'selected':''}>${l}</option>`).join('')}</select></label>
-    <label class="fld"><span>How</span><select id="set-remindMode" data-change="setting" data-k="remindMode"><option value="sms" ${s.remindMode==='sms'?'selected':''}>Send an SMS automatically</option><option value="whatsapp" ${s.remindMode!=='sms'?'selected':''}>Notify me to send it on WhatsApp</option></select></label>
-    ${s.remindMode==='sms'?`<p class="hint">The phone sends the SMS by itself from your number, even when the app is closed, and shows you a "Reminder SMS sent" notification. Normal SMS rates of your line apply.${isNative()?'':' (Works in the installed app.)'}</p>
+    ${smsAvailable()?`<label class="fld"><span>How</span><select id="set-remindMode" data-change="setting" data-k="remindMode"><option value="sms" ${s.remindMode==='sms'?'selected':''}>Send an SMS automatically</option><option value="whatsapp" ${s.remindMode!=='sms'?'selected':''}>Notify me to send it on WhatsApp</option></select></label>`:''}
+    ${s.remindMode==='sms'&&smsAvailable()?`<p class="hint">The phone sends the SMS by itself from your number, even when the app is closed, and shows you a "Reminder SMS sent" notification. Normal SMS rates of your line apply.${isNative()?'':' (Works in the installed app.)'}</p>
       ${isNative()&&!smsGranted?`<div class="banner">${ic('alert')}<div style="flex:1;min-width:0"><b>Junctura isn't allowed to send SMS yet</b><span class="small">Until you allow it, you get the WhatsApp notification instead.</span></div><button class="btn sm" data-act="smsAllow">Allow</button></div>`:''}
       <div class="r2" style="align-items:end"><label class="fld"><span>Test it on your own number</span><input id="sms-test" type="tel" inputmode="tel" placeholder="e.g. 03 123 456"></label><button class="btn" data-act="smsTest">Send test SMS</button></div>`
     :`<p class="hint">At that time the phone shows a notification. Tap it and WhatsApp opens with the message ready; tap send. WhatsApp doesn't let apps send messages on their own.${isNative()?'':' (Notifications work in the installed app.)'}</p>`}
@@ -2372,6 +2376,8 @@ FORMS.delacct=async(f,fd)=>{if(String(fd.get('c')).trim()!=='DELETE'){toast('Typ
 const CALP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioCalendar;
 const LNP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications;
 const SMSP=()=>isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhysioSms;
+// The Google Play version has no automatic SMS (Play allows it only for the phone's SMS app): it reminds by notification.
+const smsAvailable=()=>!isNative()||!!SMSP();
 let smsGranted=false;
 const smsKey=a=>{const c=getClient(a.clientId);return a.date+' '+a.time+' '+(c?.phone||'')};
 const smsNumber=p=>'+'+waNum(p);

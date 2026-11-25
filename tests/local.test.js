@@ -80,3 +80,37 @@ test('consent signature, measures, invoice and progress letter', async () => {
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('room for the status bar: the page and sheets keep clear of it (Android edge to edge)', async () => {
+  const { page, errors, ctx } = await openApp();
+  await startDemo(page);
+  // Capacitor 8 puts the status bar and navigation bar sizes in these CSS variables
+  await page.evaluate(() => { const r = document.documentElement.style; r.setProperty('--safe-area-inset-top', '40px'); r.setProperty('--safe-area-inset-bottom', '24px'); });
+  const r = await page.evaluate(() => ({
+    main: getComputedStyle(document.querySelector('.main')).paddingTop,
+    nav: getComputedStyle(document.querySelector('.nav')).bottom,
+  }));
+  assert.equal(r.main, '56px');
+  assert.equal(r.nav, '34px');
+  assert.equal(await page.evaluate(() => smsAvailable()), true, 'the SMS option shows outside the phone app');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('Google Play version (no SMS part): reminders by notification only', async () => {
+  const { getBrowser } = require('./helpers');
+  const ctx = await (await getBrowser()).newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.route('**/config.js', r => r.fulfill({ contentType: 'text/javascript', body: 'window.PD_CONFIG={}' }));
+  // a phone app whose native part has the calendar but not the SMS plugin
+  await ctx.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android', Plugins: {} }; });
+  const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto(require('./helpers').APP);
+  await page.waitForTimeout(500);
+  await startDemo(page);
+  await page.evaluate(() => go('setup'));
+  await page.waitForTimeout(400);
+  assert.equal(await page.$('#set-remindMode'), null, 'no "send an SMS automatically" choice');
+  assert.match(await page.locator('section.set-list', { hasText: 'Client reminders' }).innerText(), /Tap it and WhatsApp opens/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
