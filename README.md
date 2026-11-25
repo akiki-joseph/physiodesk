@@ -73,6 +73,13 @@ GitHub builds the APK for free in the cloud; nothing needs installing on a compu
 * **Backup and restore**: a backup file you can send to Google Drive, email or WhatsApp, and restore on a new phone.
 * Sample data to try the app with, which you can remove in one tap.
 
+## Two versions of the app
+
+* **Junctura.apk** (GitHub Releases, installed by hand): sends reminder SMS by itself.
+* **Junctura.aab** (Google Play): Google only lets the phone's own SMS app send SMS by itself, so this version reminds by notification instead (tap it and WhatsApp opens with the message ready). It is built on every change as the `Junctura-play-aab-…` artifact of the **Build Junctura APK** run, and signed for Play once the upload key is added as the `UPLOAD_KEYSTORE_BASE64` and `UPLOAD_KEYSTORE_PASSWORD` secrets.
+
+Both target Android 16, as Google Play requires. The privacy policy, terms and account deletion pages are on the website (`site/`).
+
 ## Getting the APK
 
 Gi## Getting the APK
