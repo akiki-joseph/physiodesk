@@ -73,3 +73,46 @@ begin
 end $$;
 revoke all on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- Home exercise programs shared with clients by link.
+-- The therapist's app writes the program under a long random token. The client's page has no
+-- account: it can only read the one program whose token is in its link (through
+-- get_shared_program) and tick the days it was done (through mark_program_done).
+-- Nobody without the token can list or read programs.
+create table if not exists public.shared_programs (
+  token text primary key check (length(token) between 20 and 64),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  data jsonb not null,
+  done jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.shared_programs enable row level security;
+drop policy if exists "own shared programs" on public.shared_programs;
+create policy "own shared programs" on public.shared_programs for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+revoke all on public.shared_programs from anon;
+grant select, insert, update, delete on public.shared_programs to authenticated;
+
+create or replace function public.get_shared_program(p_token text) returns jsonb
+language sql security definer set search_path = public stable as $$
+  select data || jsonb_build_object('done', done, 'updated', updated_at)
+  from public.shared_programs where token = p_token and length(p_token) >= 20
+$$;
+
+-- p_items: the numbers (0, 1, 2…) of the exercises done that day. Only days close to today are
+-- accepted, and only the last 90 days are kept.
+create or replace function public.mark_program_done(p_token text, p_day date, p_items int[]) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_day is null or p_day < current_date - 2 or p_day > current_date + 2 then return; end if;
+  if coalesce(array_length(p_items, 1), 0) > 60 then return; end if;
+  update public.shared_programs s
+     set done = (select coalesce(jsonb_object_agg(k, v), '{}'::jsonb)
+                   from jsonb_each(s.done || jsonb_build_object(p_day::text, to_jsonb(coalesce(p_items, '{}'::int[])))) as e(k, v)
+                  where k::date > current_date - 90)
+   where token = p_token and length(p_token) >= 20;
+end $$;
+revoke all on function public.get_shared_program(text) from public;
+revoke all on function public.mark_program_done(text, date, int[]) from public;
+grant execute on function public.get_shared_program(text) to anon, authenticated;
+grant execute on function public.mark_program_done(text, date, int[]) to anon, authenticated;
