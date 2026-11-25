@@ -13,7 +13,9 @@ A therapist already uses the app daily with real patient data. Every change keep
 - `www/index.html` is the whole app (one file, plain JS). State lives in `S`; clicks, forms and inputs go through the `ACT`, `FORMS`, `INPUT` and `CHANGE` maps; `render()` redraws the page. `CFG` and other cloud code are declared near the end of the script, so code that runs at load time reads `window.PD_CONFIG` directly.
 - `www/anim.js` draws the exercise figures and is shared with the client page (`site/p/`): a change there changes what clients see. `www/exercises.js` is the 800-exercise catalogue.
 - `site/` is the website. `.github/workflows/site.yml` adds the app's `anim.js`, `exercises.js`, `config.js` and fonts and publishes it; GitHub only publishes from `main`, and the publish step must stay a separate job after the upload.
-- `native/` holds the Java plugins (calendar, SMS); `.github/workflows/build-apk.yml` creates the Android project, copies them in and patches the manifest. A push to `main` publishes a release the owner installs on the phone; other branches only build.
+- `native/` holds the Java plugins (calendar, SMS); `.github/workflows/build-apk.yml` creates the Android project, copies them in and patches the manifest, in two versions. **direct** (`Junctura.apk`, signed with the old debug key so it installs over the therapist's app) keeps automatic SMS reminders; a push to `main` publishes it as a release. **play** (`Junctura.aab` for Google Play) leaves out SMS and exact alarms, which Play refuses for an app that isn't the phone's SMS app, and is signed with the upload key from the `UPLOAD_KEYSTORE_BASE64` / `UPLOAD_KEYSTORE_PASSWORD` secrets. The web code tells them apart by whether the `PhysioSms` plugin exists (`smsAvailable()`).
+- Android 15+ draws the app under the status and navigation bars: spacing at the screen edges uses `--sat`, `--sab`, `--sal`, `--sar` (fed by Capacitor's `--safe-area-inset-*`).
+- `site/privacy.html`, `terms.html` and `delete-account.html` are the pages Google Play links to; when the app's data handling changes, update them in the same change.
 
 ## Verify
 

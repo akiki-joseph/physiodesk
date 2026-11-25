@@ -6,9 +6,6 @@
 <title>Junctura</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#14151b">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400..900&family=Manrope:wght@300..800&display=swap">
 <style>
 /* Layout: phone-first clinic app. A dark "goniometer" band opens Today (the day as a dial);
    everything else stays quiet on cool paper. Floating dock on phones, ink rail from 900px.
@@ -2210,7 +2207,7 @@ function authScreen(msg){
       <label class="fld"><span>Email</span><input id="au-email" name="email" type="email" autocomplete="email" inputmode="email" required value="${esc(UI.authEmail||'')}"></label>
       ${m==='code'?(UI.codeSent?`<label class="fld"><span>Code from the email (if it shows one)</span><input id="au-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></label>`:'')
         :`<label class="fld"><span>Password</span><input id="au-pass" name="password" type="password" autocomplete="${m==='up'?'new-password':'current-password'}" required minlength="8" placeholder="${m==='up'?'At least 8 characters':''}"></label>`}
-      ${m==='up'?`<label class="chk small" style="font-weight:500"><input type="checkbox" name="agree" id="au-agree" required> I agree to the terms of use and the privacy policy</label>`:''}
+      ${m==='up'?`<label class="chk small" style="font-weight:500"><input type="checkbox" name="agree" id="au-agree" required> I agree to the <a href="${SITE}terms.html" data-ext target="_blank" rel="noopener">terms of use</a> and the <a href="${SITE}privacy.html" data-ext target="_blank" rel="noopener">privacy policy</a></label>`:''}
       <div class="auth-msg" id="au-msg" role="alert">${msg?esc(msg):''}</div>
       <button class="btn primary block" type="submit" id="au-go">${m==='up'?'Create account and start the free trial':m==='code'?(UI.codeSent?'Sign in':'Email me a code'):'Sign in'}</button>
     </form>
@@ -2341,14 +2338,15 @@ function confirmedScreen(name){
 
 /* ---------- account settings ---------- */
 function accountCard(){
-  if(!cloudOn())return`<section class="card set-list"><h2 class="h2">Account</h2><p class="hint">This copy of Junctura keeps everything on this phone only.</p></section>`;
+  if(!cloudOn())return`<section class="card set-list"><h2 class="h2">Account</h2><p class="hint">This copy of Junctura keeps everything on this phone only.</p>${legalLinks()}</section>`;
   const t=trialLeft(),last=CLOUD.at?Math.round((Date.now()-CLOUD.at)/60000):null;
   return`<section class="card set-list"><div class="card-head" style="margin:0"><div><h2 class="h2">Account</h2><div class="muted small">${esc(SESSION?SESSION.user.email:'')}</div></div>${cloudBadge()}</div>
     ${PROFILE?`<div class="svc-row" style="border:0;padding:0"><span class="info"><b>${PROFILE.plan==='trial'?'Free trial':esc(PROFILE.plan[0].toUpperCase()+PROFILE.plan.slice(1))+' plan'}</b><div class="muted small">${t!=null?(t?t+' day'+(t>1?'s':'')+' left':'Trial ended'):'Active'}</div></span></div>`:''}
     <p class="hint">Your data is saved in your account and on this phone. ${last!=null?'Last synced '+(last<1?'just now':last+' min ago')+'.':''}${CLOUD.state==='error'?' Last try failed: '+esc(CLOUD.err):''}</p>
     <div class="btn-row"><button class="btn" data-act="syncNow">${ic('repeat',15)} Sync now</button><button class="btn" data-act="changePass">${ic('lock',15)} Change password</button><button class="btn" data-act="signOut">Sign out</button></div>
-    <button class="btn sm bad" style="align-self:flex-start" data-act="deleteAccount">${ic('trash',14)} Delete my account</button></section>`;
+    <button class="btn sm bad" style="align-self:flex-start" data-act="deleteAccount">${ic('trash',14)} Delete my account</button>${legalLinks()}</section>`;
 }
+const legalLinks=()=>`<p class="small muted" style="margin:0"><a href="${SITE}privacy.html" data-ext target="_blank" rel="noopener">Privacy policy</a> · <a href="${SITE}terms.html" data-ext target="_blank" rel="noopener">Terms of use</a></p>`;
 ACT.syncNow=async()=>{await cloudSync();render();toast(CLOUD.state==='ok'?'Everything is synced':'Could not sync: '+(CLOUD.err||'no connection'))};
 ACT.changePass=(el)=>{const forgot=UI.forgotFlow;UI.forgotFlow=false;openModal(`<form class="form" data-form="newpass" data-forgot="${forgot?1:''}"><div class="card-head" style="margin:0"><h2 class="h2">${forgot?'Set a new password':'Change password'}</h2><button type="button" class="btn icon ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>
   ${forgot?`<p class="hint" style="margin:0">You signed in with an emailed code. Choose a new password for next time.</p>`:`<label class="fld"><span>Current password</span><input id="np-0" name="p0" type="password" autocomplete="current-password" required></label>`}

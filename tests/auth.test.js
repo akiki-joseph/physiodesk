@@ -61,3 +61,12 @@ test('forgot password: the emailed link signs in', async () => {
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('sign-up links to the terms and the privacy policy on the website', async () => {
+  const { page, errors, ctx } = await openApp({ cloud: true });
+  await page.click('[data-act=authMode][data-v=up]');
+  const links = await page.$$eval('label.chk a', a => a.map(x => x.href));
+  assert.deepEqual(links, ['https://site.example/terms.html', 'https://site.example/privacy.html']);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

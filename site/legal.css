@@ -1,0 +1,18 @@
+@font-face{font-family:Unbounded;src:url(fonts/unbounded.woff2) format("woff2");font-weight:200 900;font-display:swap}
+@font-face{font-family:Manrope;src:url(fonts/manrope.woff2) format("woff2");font-weight:200 800;font-display:swap}
+:root{--bg:#f3f4f8;--surface:#fff;--text:#14151b;--muted:#5a5d70;--line:#dcdee8;--primary:#5b4bff}
+@media (prefers-color-scheme:dark){:root{--bg:#0d0e13;--surface:#16171f;--text:#eceef6;--muted:#9a9db3;--line:#2a2c3d;--primary:#8b7fff;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 Manrope,system-ui,sans-serif}
+header{background:#14151b;color:#fff;padding:18px 16px}
+header a{display:inline-flex;align-items:center;gap:9px;color:#fff;text-decoration:none;font:600 15px Unbounded,sans-serif}
+header img{width:28px;height:28px;border-radius:8px}
+main{max-width:720px;margin:0 auto;padding:28px 16px 40px}
+h1{font:700 28px/1.2 Unbounded,sans-serif;letter-spacing:-.02em;margin:0 0 6px}
+.updated{color:var(--muted);margin:0 0 24px}
+h2{font:600 18px/1.3 Unbounded,sans-serif;margin:30px 0 8px}
+a{color:var(--primary)}
+ul{padding-left:22px}li{margin:4px 0}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin:16px 0}
+footer{max-width:720px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:14px}
+footer a{color:var(--muted)}
