@@ -27,6 +27,11 @@ test('legal pages load, link to each other, and every local link and file exists
     const text = await page.textContent('body');
     if (f !== 'index.html') for (const other of ['Privacy policy', 'Terms of use', 'Delete your account']) assert.ok(text.includes(other), `${f} links to ${other}`);
   }
+  for (const f of ['privacy.html', 'terms.html', 'delete-account.html']) {
+    const html = fs.readFileSync(path.join(site, f), 'utf8');
+    assert.doesNotMatch(html, /\{\{[A-Z_]+\}\}/, `${f} still has a placeholder`);
+    assert.match(html, /mailto:junctura\.app@gmail\.com/, `${f} shows the contact email`);
+  }
   await page.goto(`file://${site}/privacy.html`);
   assert.match(await page.textContent('main'), /no advertising and no analytics/);
   await page.goto(`file://${site}/delete-account.html`);
